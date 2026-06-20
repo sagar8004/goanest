@@ -1,0 +1,219 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% block title %}Overview — GoaNest Dashboard{% endblock %}
+{% block nav_home %}active{% endblock %}
+{% block page_title %}Overview{% endblock %}
+{% block breadcrumb %}<a href="{% url 'dashboard' %}">Dashboard</a>{% endblock %}
+{% block topbar_actions %}
+<a href="{% url 'property_add' %}" class="topbar-btn primary">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  Add Property
+</a>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+.overview-grid { display:grid;grid-template-columns:2fr 1fr;gap:1.5rem;margin-top:1.5rem; }
+.activity-item {
+  display:flex;align-items:flex-start;gap:.9rem;
+  padding:.9rem 0;border-bottom:1px solid var(--border);
+}
+.activity-item:last-child { border-bottom:none; }
+.activity-dot {
+  width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;
+}
+.activity-text { font-size:.82rem;color:var(--ink-muted);line-height:1.5;flex:1; }
+.activity-text strong { color:var(--ink);font-weight:500; }
+.activity-time { font-size:.72rem;color:var(--ink-muted);white-space:nowrap; }
+.quick-actions { display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-top:1rem; }
+.quick-action {
+  padding:1rem;border-radius:var(--radius);border:1px solid var(--border);
+  text-align:center;text-decoration:none;transition:var(--transition);
+  display:flex;flex-direction:column;align-items:center;gap:.4rem;
+  background:var(--white);
+}
+.quick-action:hover { border-color:var(--teal);background:var(--teal-light);transform:translateY(-2px); }
+.quick-action-icon { font-size:1.4rem; }
+.quick-action-label { font-size:.75rem;font-weight:500;color:var(--ink);letter-spacing:.03em; }
+.region-bar-row { display:flex;align-items:center;gap:.8rem;margin-bottom:.7rem; }
+.region-label { font-size:.78rem;color:var(--ink-muted);width:130px;flex-shrink:0; }
+.region-track { flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden; }
+.region-fill { height:6px;background:var(--teal);border-radius:3px;transition:width 1.2s cubic-bezier(.2,.8,.3,1); }
+.region-num { font-size:.78rem;font-weight:500;color:var(--ink);min-width:24px;text-align:right; }
+.top-listing {
+  display:flex;align-items:center;gap:.8rem;
+  padding:.7rem 0;border-bottom:1px solid var(--border);
+}
+.top-listing:last-child { border-bottom:none; }
+.listing-thumb {
+  width:48px;height:38px;border-radius:var(--radius);overflow:hidden;
+  flex-shrink:0;background:var(--border);
+}
+.listing-thumb img { width:100%;height:100%;object-fit:cover; }
+.listing-info { flex:1;min-width:0; }
+.listing-name { font-size:.83rem;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.listing-meta { font-size:.72rem;color:var(--ink-muted); }
+.listing-price { font-family:var(--ff-display);font-size:.95rem;font-weight:600;color:var(--teal-dark);white-space:nowrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Stats Row -->
+<div class="stats-row">
+  <div class="stat-card" style="--accent-color:var(--teal)">
+    <div class="stat-icon" style="background:var(--teal-light)">🏠</div>
+    <div class="stat-body">
+      <div class="stat-val">{{ total_listings }}</div>
+      <div class="stat-label">Total Listings</div>
+      {% comment %} <div class="stat-delta up">↑ {{ new_this_month }} added this month</div> {% endcomment %}
+    </div>
+  </div>
+  <div class="stat-card" style="--accent-color:var(--success)">
+    <div class="stat-icon" style="background:var(--success-bg)">✅</div>
+    <div class="stat-body">
+      <div class="stat-val">{{ active_listings }}</div>
+      <div class="stat-label">Active Listings</div>
+      {% comment %} <div class="stat-delta up">{{ featured_count }} featured</div> {% endcomment %}
+    </div>
+  </div>
+  <div class="stat-card" style="--accent-color:var(--gold)">
+    <div class="stat-icon" style="background:var(--gold-light)">💬</div>
+    <div class="stat-body">
+      <div class="stat-val">{{ total_enquiries }}</div>
+      <div class="stat-label">Total Enquiries</div>
+      {% comment %} <div class="stat-delta {% if unread_count %}up{% endif %}">{{ unread_count }} unread</div> {% endcomment %}
+    </div>
+  </div>
+  <div class="stat-card" style="--accent-color:var(--danger)">
+    <div class="stat-icon" style="background:var(--danger-bg)">📹</div>
+    <div class="stat-body">
+      <div class="stat-val">{{ total_videoenquiries }}</div>
+      <div class="stat-label">Video Bookings</div>
+      {% comment %} <div class="stat-delta">{{ pending_videos }} pending</div> {% endcomment %}
+    </div>
+  </div>
+</div>
+
+<div class="overview-grid">
+  <!-- LEFT -->
+  <div style="display:flex;flex-direction:column;gap:1.5rem;">
+
+    <!-- Recent Properties -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Recent <em>Properties</em></div>
+        <a href="{% url 'property_manage' %}" class="topbar-btn secondary" style="padding:.35rem .9rem;font-size:.72rem;">View All →</a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Property</th><th>Type</th><th>Region</th><th>Price</th><th>Status</th><th>Actions</th>
+          </tr></thead>
+          <tbody>
+          {% for p in recent_properties %}
+          <tr>
+            <td>
+              <div style="font-weight:500;font-size:.85rem;">{{ p.title }}</div>
+              <div style="font-size:.72rem;color:var(--ink-muted);">{{ p.area_name }}</div>
+            </td>
+            <td><span class="pill pill-teal">{{ p.get_property_type_display }}</span></td>
+            <td style="font-size:.8rem;color:var(--ink-muted);">{{ p.location }}</td>
+            <td><strong style="font-family:var(--ff-display);color:var(--teal-dark);">{{ p.price }}</strong></td>
+            <td>
+              {% if p.status == 'available' %}<span class="pill pill-success">Available</span>
+              {% elif p.status == 'sold' %}<span class="pill pill-danger">Sold</span>
+              {% else %}<span class="pill pill-muted">{{ p.get_status_display }}</span>{% endif %}
+            </td>
+            <td>
+              <div class="action-group">
+                <a href="{% url 'property_detail' p.slug %}" target="_blank" class="action-btn" title="View">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </a>
+                {% comment %} <a href="{% url 'property_edit' p.pk %}" class="action-btn" title="Edit">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </a> {% endcomment %}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">🏠</div><div class="empty-title">No properties yet</div><div class="empty-sub"><a href="{% url 'property_add' %}">Add your first listing →</a></div></div></td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Recent Enquiries -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Recent <em>Enquiries</em></div>
+        <a href="{% url 'enquiry_list' %}" class="topbar-btn secondary" style="padding:.35rem .9rem;font-size:.72rem;">View All →</a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Buyer Name</th><th>Property</th><th>Email</th><th>Date</th></tr></thead>
+          <tbody>
+          {% for e in recent_enquiries %}
+          <tr>
+            <td>
+              <div style="font-weight:500;font-size:.85rem;">{{ e.name }}</div>
+              <div style="font-size:.72rem;color:var(--ink-muted);">{{ e.phone }}</div>
+            </td>
+            <td style="font-size:.8rem;color:var(--ink-muted);">{{ e.property|default:"General" }}</td>
+            <td><span class="pill pill-sand">{{ e.email }}</span></td>
+            <td style="font-size:.78rem;color:var(--ink-muted);">{{ e.created_at|date:"d M Y" }}</td>
+            
+          </tr>
+          {% empty %}
+          <tr><td colspan="5"><div class="empty-state" style="padding:2rem"><div class="empty-icon">💬</div><div class="empty-title">No enquiries yet</div></div></td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div style="display:flex;flex-direction:column;gap:1.5rem;">
+
+    <!-- Quick Actions -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">Quick <em>Actions</em></div></div>
+      <div class="card-body" style="padding:1.2rem;">
+        <div class="quick-actions">
+          <a href="{% url 'property_add' %}" class="quick-action">
+            <div class="quick-action-icon">➕</div>
+            <div class="quick-action-label">Add Listing</div>
+          </a>
+          <a href="{% url 'enquiry_list' %}" class="quick-action">
+            <div class="quick-action-icon">💬</div>
+            <div class="quick-action-label">Enquiries</div>
+          </a>
+          <a href="/" target="_blank" class="quick-action">
+            <div class="quick-action-icon">🌐</div>
+            <div class="quick-action-label">View Site</div>
+          </a>
+          <a href="{% url 'property_manage' %}" class="quick-action">
+            <div class="quick-action-icon">🏠</div>
+            <div class="quick-action-label">All Props</div>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Listings by Region -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">Listings by <em>Region</em></div></div>
+      <div class="card-body" style="padding:1.2rem;">
+        {% for item in region_stats %}
+        <div class="region-bar-row">
+          <div class="region-label">{{ item.region|title }}</div>
+          <div class="region-track"><div class="region-fill" style="width:{{ item.total }}%"></div></div>
+          <div class="region-num">{{ item.total }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

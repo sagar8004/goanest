@@ -1,0 +1,729 @@
+{% extends 'base/base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}{{property.title}} — GoaNest{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/property_detail.css' %}">
+{% endblock %}
+
+{% block header %}
+    {% include 'base/header_detail.html' %}
+{% endblock %}
+
+
+{% block content %}
+
+<!-- ── HERO ── -->
+<div class="hero" id="heroSection">
+  <div class="hero-gallery-strip">
+    <div class="hero-main-img">
+      <img src="{{ property.featured_image.url }}" alt="{{ property.title }}" id="heroMainImg"/>
+    </div>
+    {% for image in property.gallery.all|slice:":2" %}
+    <div class="hero-thumb" data-label="Living Room" onclick="openLightbox(1)">
+      <img src="{{ image.gallery_images.url }}" alt="Living room interior"/>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <div class="hero-left" id="heroLeft">
+      <div class="hero-eyebrow">{{ property.location }} · {{ property.region }}</div>
+      <h1 class="hero-title">{{property.title}}<br/>Villa</h1>
+      <div class="hero-location">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        {{ property.full_address }} — {{ property.pincode }}
+      </div>
+      <div class="hero-badges">
+        {% if property.verified %}<span class="badge badge-verified">✓ Verified Listing</span>{% endif %}
+        {% if property.featured %}<span class="badge badge-featured">Featured</span>{% endif %}
+        {% if property.rera_number %}<span class="badge badge-rera">RERA: {{property.rera_number}}</span>{% endif %}
+      </div>
+    </div>
+    <div class="hero-right" id="heroRight">
+      <div class="hero-price-label">Price</div>
+      <div class="hero-price"><sup>₹</sup>{{property.price|indian_currency}}<sub> {{property.price_label}}</sub></div>
+      <div class="hero-cta-group">
+        <a href="#videocall" class="btn btn-gold">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          Book Video Tour
+        </a>
+        <button class="btn btn-ghost" onclick="openModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.5 10.5a19.79 19.79 0 01-3.07-8.67A2 2 0 012.41 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.72 6.72l.77-.77a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          Enquire
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── BREADCRUMB ── -->
+<div class="breadcrumb">
+  <a href="{% url 'home' %}">Home</a>
+  <span>›</span>
+  <a href="{% url 'home' %}#listings">Listings</a>
+  <span>›</span>
+  <a href="#">{{property.get_region_display}}</a>
+  <span>›</span>
+  <span style="color:var(--ink)">{{property.title}}, {{property.location}}</span>
+</div>
+
+<!-- ── MAIN CONTENT ── -->
+<div class="main-grid">
+
+  <!-- LEFT CONTENT -->
+  <div class="content-col">
+
+    <!-- Key Specs Bar -->
+    <div class="key-specs" data-aos="fade-up">
+      <div class="key-spec">
+        <div class="key-spec-icon">🛏️</div>
+        <div class="key-spec-val">{{ property.bedrooms }} BHK</div>
+        <div class="key-spec-key">Bedrooms</div>
+      </div>
+      <div class="key-spec">
+        <div class="key-spec-icon">📐</div>
+        <div class="key-spec-val">{{ property.builtup_area }} m²</div>
+        <div class="key-spec-key">Built-up Area</div>
+      </div>
+      <div class="key-spec">
+        <div class="key-spec-icon">🏡</div>
+        <div class="key-spec-val">{{ property.area_sqft }} m²</div>
+        <div class="key-spec-key">Plot Area</div>
+      </div>
+      <div class="key-spec">
+        <div class="key-spec-icon">🚗</div>
+        <div class="key-spec-val">{{property.parking_spaces}}</div>
+        <div class="key-spec-key">Parking Space</div>
+      </div>
+    </div>
+
+    <!-- Overview -->
+    <div class="prop-section" data-aos="fade-up">
+      <h2 class="prop-section-title">Property <em>Overview</em></h2>
+      <p class="overview-text">
+        {{property.short_description}}
+      </p>
+      <p class="overview-text">
+        {{property.description}}
+      </p>
+    </div>
+
+    <!-- Highlights -->
+    <div class="prop-section" data-aos="fade-up">
+      <h2 class="prop-section-title">Key <em>Highlights</em></h2>
+      <div class="highlights-grid">
+        {% for highlight in property.highlights.all %}
+        <div class="highlight-item">
+          <div class="highlight-icon">{{highlight.icon}}</div>
+          <div class="highlight-text"><strong>{{highlight.title}}</strong>{{highlight.description}}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Gallery -->
+    <div class="prop-section" data-aos="fade-up">
+      <h2 class="prop-section-title">Photo <em>Gallery</em></h2>
+      <div class="gallery-grid">
+        {% for images in property.gallery.all %}
+        <div class="gallery-item tall wide" onclick="openLightbox({{ forloop.counter0 }})">
+          <img src="{{ images.gallery_images.url }}" alt="{{property.title}}"/>
+          <div class="gallery-expand">Expand</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Amenities -->
+    <div class="prop-section" data-aos="fade-up">
+      <h2 class="prop-section-title">Amenities & <em>Features</em></h2>
+      <div class="amenities-grid">
+        {% for a in property.amenities.all %}
+        <div class="amenity"><span class="amenity-icon">{{a.icon}}</span>{{a.name}}</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Location -->
+    <div class="prop-section" data-aos="fade-up">
+      <h2 class="prop-section-title">Location & <em>Neighbourhood</em></h2>
+      <div class="location-grid">
+        <div class="location-info">
+          {% for location in property.nearby_places.all %}
+          <div class="location-item">
+            <div class="location-item-icon">{{location.icon}}</div>
+            <div class="location-item-text">
+              <strong>{{location.place_name}}</strong>
+              <span>{{location.distance}} · {{location.short_description}}</span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="map-placeholder">
+          <div style="font-size:2rem">📍</div>
+          <strong>{{property.full_address}}<br/>{{property.get_region_display}} — {{property.pincode}}</strong>
+          <p>Embed your Google Maps iframe here.<br/>Replace this block with the iframe code.</p>
+          <a href="{{ property.google_map_url }}" target="_blank" class="btn btn-outline-teal" style="font-size:.75rem;padding:.5rem 1.2rem;">Open in Google Maps ↗</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Video Call Booking -->
+
+  <form id="enquiryForm" method="POST">
+  {% csrf_token %}
+
+    <div class="prop-section" data-aos="fade-up" id="videocall">
+      <h2 class="prop-section-title">Book a Live <em>Video Viewing</em></h2>
+      <div class="videocall-box">
+        <div class="videocall-text">
+          <div class="vc-eyebrow">No Travel Required</div>
+          <div class="vc-title">See Every Room,<br/><em>Live on Video</em></div>
+          <div class="vc-desc">
+            Based in Mumbai, Bangalore, Delhi or abroad? We go to the property and walk you through every room, the view, the pool, the garden — all on a 30-minute live video call. No app needed on your end.
+          </div>
+          <div class="vc-steps">
+            <div class="vc-step"><div class="vc-step-num">1</div>Fill the form with your preferred date & time</div>
+            <div class="vc-step"><div class="vc-step-num">2</div>Receive a WhatsApp confirmation within 2 hours</div>
+            <div class="vc-step"><div class="vc-step-num">3</div>Join via WhatsApp Video, Google Meet, or Zoom</div>
+            <div class="vc-step"><div class="vc-step-num">4</div>Ask every question — we record it and send it to you</div>
+          </div>
+        </div>
+        <div class="videocall-form">
+          <div class="vc-form-title">Request a Video Viewing</div>
+          <div class="form-row-2">
+            <div class="form-group">
+              <label>Your Name</label>
+              <input type="text" placeholder="Rahul Sharma" id="video_name" name="video_name"/>
+            </div>
+            <div class="form-group">
+              <label>WhatsApp No.</label>
+              <input type="tel" placeholder="+91 98765 43210" id="video_phone" name="video_phone"/>
+            </div>
+          </div>
+          <input type="hidden" id="property_id" value="{{ property.id }}">
+          <div class="form-group">
+            <label>Preferred Date</label>
+            <input type="date" id="preferred_date" name="preferred_date"/>
+          </div>
+          <div class="form-group">
+            <label>Preferred Time</label>
+            <select id="preferred_time" name="preferred_time">
+              <option value="9:00 AM – 10:00 AM">9:00 AM – 10:00 AM</option>
+              <option value="10:00 AM – 11:00 AM">10:00 AM – 11:00 AM</option>
+              <option value="11:00 AM – 12:00 PM">11:00 AM – 12:00 PM</option>
+              <option value="2:00 PM – 3:00 PM">2:00 PM – 3:00 PM</option>
+              <option value="3:00 PM – 4:00 PM">3:00 PM – 4:00 PM</option>
+              <option value="5:00 PM – 6:00 PM">5:00 PM – 6:00 PM</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Platform</label>
+            <select id="platform" name="platform">
+              <option value="WhatsApp Video">WhatsApp Video</option>
+              <option value="Google Meet">Google Meet</option>
+              <option value="Zoom">Zoom</option>
+              <option value="FaceTime">FaceTime</option>
+            </select>
+          </div>
+          <button type="button" id="videoRequestBtn" class="btn btn-gold" style="width:100%;justify-content:center;" onclick="submitVideoViewing()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+            Confirm Video Viewing
+          </button>
+          <div class="vc-platforms">
+            Works on:
+            <span class="platform-tag">WhatsApp</span>
+            <span class="platform-tag">Zoom</span>
+            <span class="platform-tag">Meet</span>
+            <span class="platform-tag">FaceTime</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </form>
+
+    <!-- Legal Docs -->
+    <div class="prop-section" data-aos="fade-up" id="legal">
+      <h2 class="prop-section-title">Legal <em>Documentation</em></h2>
+      <div class="legal-banner">
+        <div class="legal-banner-title">🏛️ Fully Legally Vetted Property</div>
+        <div class="legal-banner-sub">
+          This property has been independently verified by our empanelled Goa property lawyer. All title documents are clear, RERA registered, and the property is free of encumbrances. OCI and NRI buyers are welcome — we provide full FEMA and RBI compliance guidance.
+        </div>
+      </div>
+      <div class="legal-docs-grid">
+        {% for info in property.legal_info.all %}
+        <div class="legal-doc">
+          <div class="doc-icon">{{info.icon}}</div>
+          <div class="doc-info">
+            <strong>{{info.title}}</strong>
+            <span>{{info.description}}</span>
+          </div>
+          <span class="doc-status ok">{{info.status}}</span>
+        </div>
+        {% endfor %}
+      </div>
+      <div style="margin-top:1.2rem;display:flex;gap:.8rem;flex-wrap:wrap;">
+        <button class="btn btn-outline-teal" onclick="openModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          Speak to Our Property Lawyer
+        </button>
+        <button class="btn btn-outline-teal" onclick="openModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Request Document Pack
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /content-col -->
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar" data-aos="fade-left">
+    <div class="sidebar-card">
+      <div class="sidebar-price-top">
+        <div class="sidebar-price-label">Asking Price</div>
+        <div class="sidebar-price">₹{{property.price|indian_currency}}<sub> {{property.price_label}}</sub></div>
+        <div class="sidebar-emi">Financing available<strong> Starting</strong> at 8.5% p.a.</div>
+      </div>
+      <div class="sidebar-body">
+        <div class="sidebar-specs-row">
+          <div class="sidebar-spec">
+            <div class="sidebar-spec-val">{{property.bedrooms}} BHK</div>
+            <div class="sidebar-spec-key">Configuration</div>
+          </div>
+          <div class="sidebar-spec">
+            <div class="sidebar-spec-val">{{property.builtup_area}} m²</div>
+            <div class="sidebar-spec-key">Built-up</div>
+          </div>
+          <div class="sidebar-spec">
+            <div class="sidebar-spec-val">{{property.get_construction_status_display}}</div>
+            <div class="sidebar-spec-key">Status</div>
+          </div>
+          <div class="sidebar-spec">
+            <div class="sidebar-spec-val">{{property.year_built}}</div>
+            <div class="sidebar-spec-key">Year Built</div>
+          </div>
+        </div>
+        <div class="sidebar-actions">
+          <button class="btn btn-teal" onclick="document.getElementById('videocall').scrollIntoView({behavior:'smooth'})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+            Book Video Viewing
+          </button>
+          <button class="btn btn-outline-teal" onclick="openModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.5 10.5 19.79 19.79 0 01.43 1.84 2 2 0 012.41 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.72 6.72l.77-.77a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+            Request Callback
+          </button>
+        </div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-agent">
+          <div class="agent-avatar">RV</div>
+          <div>
+            <div class="agent-name">Sagar Patil</div>
+            <div class="agent-role">Senior Property Advisor · GoaNest</div>
+          </div>
+        </div>
+        <div class="agent-contacts">
+          <button class="agent-contact-btn wa" onclick="window.open('https://wa.me/919876543210?text=Hi Rahul, I\'m interested in the Azure Sea-View Villa in Anjuna','_blank')">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            WhatsApp
+          </button>
+          <button class="agent-contact-btn call" onclick="openModal()">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.5 10.5 19.79 19.79 0 01.43 1.84 2 2 0 012.41 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.72 6.72l.77-.77a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+            Call Back
+          </button>
+        </div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-share">
+          <span class="sidebar-share-label">Share this listing</span>
+          <button class="share-btn" onclick="shareProperty('wa')" title="WhatsApp">W</button>
+          <button class="share-btn" onclick="shareProperty('copy')" title="Copy Link">⎘</button>
+          <button class="share-btn" onclick="shareProperty('mail')" title="Email">✉</button>
+        </div>
+        <div style="margin-top:.8rem;text-align:center;">
+          <span class="rera-badge">RERA: {{property.rera_number}}</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+</div><!-- /main-grid -->
+
+<!-- ── SIMILAR PROPERTIES ── -->
+<div style="background:var(--sand);padding:4rem 5%;">
+  <div style="max-width:1200px;margin:0 auto;">
+    <div class="section-eyebrow" style="font-size:.7rem;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);margin-bottom:.6rem;display:flex;align-items:center;gap:.6rem;" data-aos="fade-up">
+      <span style="width:26px;height:1px;background:var(--teal);display:inline-block"></span>
+      You May Also Like
+    </div>
+    <h2 style="font-family:var(--ff-display);font-size:clamp(1.6rem,3vw,2.2rem);font-weight:300;color:var(--ink);margin-bottom:2rem;" data-aos="fade-up" data-aos-delay="50">Similar <em style="font-style:italic;color:var(--teal)">Properties</em></h2>
+    <div class="similar-grid">
+      <div class="similar-card" data-aos="fade-up" data-aos-delay="0">
+        <div class="similar-img"><img src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=500&q=80" alt="Portuguese Mansion"/></div>
+        <div class="similar-body">
+          <div class="similar-loc">Fontainhas · Panaji</div>
+          <div class="similar-name">Colonial Portuguese Mansion</div>
+          <div class="similar-footer">
+            <div class="similar-price">₹3.8 Cr</div>
+            <button class="similar-enquire" onclick="openModal()">Enquire →</button>
+          </div>
+        </div>
+      </div>
+      <div class="similar-card" data-aos="fade-up" data-aos-delay="100">
+        <div class="similar-img"><img src="https://images.unsplash.com/photo-1416331108676-a22ccb276e35?w=500&q=80" alt="Palolem Villa"/></div>
+        <div class="similar-body">
+          <div class="similar-loc">Palolem · South Goa</div>
+          <div class="similar-name">Cliffside Luxury Retreat</div>
+          <div class="similar-footer">
+            <div class="similar-price">₹8.5 Cr</div>
+            <button class="similar-enquire" onclick="openModal()">Enquire →</button>
+          </div>
+        </div>
+      </div>
+      <div class="similar-card" data-aos="fade-up" data-aos-delay="200">
+        <div class="similar-img"><img src="https://images.unsplash.com/photo-1602343168117-bb8ffe3e2e9f?w=500&q=80" alt="Canacona Eco Villa"/></div>
+        <div class="similar-body">
+          <div class="similar-loc">Canacona · South Goa</div>
+          <div class="similar-name">Jungle-Edge Eco Villa</div>
+          <div class="similar-footer">
+            <div class="similar-price">₹1.9 Cr</div>
+            <button class="similar-enquire" onclick="openModal()">Enquire →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── STICKY MOBILE BAR ── -->
+<div class="sticky-bottom" id="stickyBar">
+  <div>
+    <div class="sidebar-price-label" style="font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-muted)">Price</div>
+    <div class="sticky-bottom-price">₹{{property.price|indian_currency}}<sub>  {{property.price_label}}</sub></div>
+  </div>
+  <div class="sticky-bottom-btns">
+    <button class="btn btn-teal" onclick="document.getElementById('videocall').scrollIntoView({behavior:'smooth'})">Video Tour</button>
+    <button class="btn btn-gold" onclick="openModal()">Enquire</button>
+  </div>
+</div>
+
+<!-- ── ENQUIRY MODAL ── -->
+<form id="videoViewingForm" method="POST">
+{% csrf_token %} 
+
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-title">Enquire About This Listing</div>
+    <div class="modal-sub">{{property.title}}, {{property.location}} · ₹{{property.price|indian_currency}}</div>
+    <div class="m-form-row">
+      <div class="m-form-group"><label>Name</label><input type="text" id="name" name="name" placeholder="Your full name"/></div>
+      <div class="m-form-group"><label>WhatsApp</label><input type="tel" id="phone" name="phone" placeholder="+91 98765 43210"/></div>
+    </div>
+    <div class="m-form-group"><label>Email</label><input type="email" id="email" name="email" placeholder="your@email.com"/></div>
+    <input type="hidden" id="property_id" value="{{ property.id }}">
+    <div class="m-form-group">
+        <label>Viewing Type</label>
+        <select name="viewing_type" id="viewing_type">
+          <option value="Video Call">Video Call</option>
+          <option value="In-Person Visit">In-Person Visit</option>
+          <option value="Just Information">Just Information</option>
+        </select>
+    </div>
+    <div class="m-form-group">
+      <label>Message</label>
+      <textarea id="message" name="message" placeholder="Any questions or special requirements about this property…"></textarea>
+    </div>
+    <button type="button" class="btn btn-teal" style="width:100%;justify-content:center;" id="submitEnquiryBtn" onclick="submitPropertyEnquiry()">
+      Send Enquiry — We Reply quickly
+    </button>
+    <p style="font-size:.7rem;color:#bbb;text-align:center;margin-top:.7rem;">Your information is confidential and never shared.</p>
+  </div>
+</div>
+
+</form>
+
+<!-- ── LIGHTBOX ── -->
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" onclick="closeLightbox()">×</button>
+  <button class="lightbox-prev" onclick="prevImg()">‹</button>
+  <img class="lightbox-img" id="lightboxImg" src="" alt="Property photo"/>
+  <button class="lightbox-next" onclick="nextImg()">›</button>
+  <div class="lightbox-counter" id="lightboxCounter">1 / 6</div>
+</div>
+
+
+<!-- SCRIPTS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+<script>
+  /* ── NAVBAR SCROLL ── */
+window.addEventListener('scroll',()=>{
+  document.getElementById('navbar').classList.toggle('scrolled', window.scrollY>60);
+});
+
+
+/* ── HERO GSAP ── */
+gsap.from('#heroLeft',{opacity:0,x:-50,duration:1.1,delay:.3,ease:'power3.out'});
+gsap.from('#heroRight',{opacity:0,x:50,duration:1.1,delay:.5,ease:'power3.out'});
+gsap.from('.hero-main-img img',{scale:1.12,duration:2.5,ease:'power2.out'});
+
+/* ── GALLERY IMAGES ── */
+const galleryImgs = [
+    {% for image in property.gallery.all %}
+        "{{ image.gallery_images.url }}",
+    {% endfor %}
+];
+let currentImg=0;
+function openLightbox(i){
+  currentImg=i;
+  document.getElementById('lightboxImg').src=galleryImgs[i];
+  document.getElementById('lightboxCounter').textContent=(i+1)+' / '+galleryImgs.length;
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeLightbox(){ document.getElementById('lightbox').classList.remove('open');document.body.style.overflow=''; }
+function nextImg(){ currentImg=(currentImg+1)%galleryImgs.length;openLightbox(currentImg); }
+function prevImg(){ currentImg=(currentImg-1+galleryImgs.length)%galleryImgs.length;openLightbox(currentImg); }
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight') nextImg();
+  else if(e.key==='ArrowLeft') prevImg();
+  else if(e.key==='Escape'){ closeLightbox();closeModal(); }
+});
+
+/* ── MODAL ── */
+function openModal(){ document.getElementById('modalOverlay').classList.add('open');document.body.style.overflow='hidden'; }
+function closeModal(){ document.getElementById('modalOverlay').classList.remove('open');document.body.style.overflow=''; }
+function closeModalOutside(e){ if(e.target===document.getElementById('modalOverlay')) closeModal(); }
+{% comment %} function submitEnquiry(){ closeModal();alert('Thank you! Rahul will WhatsApp you within 2 hours. 🙏'); } {% endcomment %}
+{% comment %} function submitVC(){ alert('Video viewing booked! You\'ll receive a WhatsApp confirmation shortly. 🎥'); } {% endcomment %}
+
+
+/* ---- Form Submission --- */
+
+let enquirySubmitting = false;
+
+function submitPropertyEnquiry(){
+
+    if(enquirySubmitting){
+        return;
+    }
+
+    enquirySubmitting = true;
+
+    const btn = document.getElementById('submitEnquiryBtn');
+
+    btn.disabled = true;
+    btn.innerHTML = 'Sending...';
+
+    const formData = new FormData();
+
+    formData.append('property_id',document.getElementById('property_id').value);
+
+    formData.append('name',document.getElementById('name').value);
+
+    formData.append('phone',document.getElementById('phone').value);
+
+    formData.append('email',document.getElementById('email').value);
+
+    formData.append('viewing_type',document.getElementById('viewing_type').value);
+
+    formData.append('message',document.getElementById('message').value);
+
+    fetch('/submit-enquiry/',{
+
+        method:'POST',
+
+        headers:{
+            'X-CSRFToken':
+            document.querySelector(
+                '[name=csrfmiddlewaretoken]'
+            ).value
+        },
+
+        body:formData
+
+    })
+
+    .then(response=>response.json())
+
+    .then(data=>{
+
+        if(data.success){
+
+          enquirySubmitting = false;
+
+          document.getElementById('enquiryForm').reset();
+
+            alert(
+                'Thank you! We received your enquiry.'
+            );
+
+            closeModal();
+
+        }
+
+    })
+
+    .catch(error=>{
+
+        btn.disabled=false;
+
+        btn.innerHTML='Send Enquiry';
+
+        enquirySubmitting=false;
+
+    });
+
+}
+
+
+/* ---- Video_Form Submission --- */
+
+let videoSubmitting = false;
+
+function submitVideoViewing(){
+
+    if(videoSubmitting){
+        return;
+    }
+
+    videoSubmitting = true;
+
+    const btn =
+        document.getElementById(
+            'videoRequestBtn'
+        );
+
+    btn.disabled = true;
+    btn.innerHTML = 'Submitting...';
+
+    const formData = new FormData();
+
+    formData.append(
+        'property_id',
+        document.getElementById(
+            'property_id'
+        ).value
+    );
+
+    formData.append(
+        'name',
+        document.getElementById(
+            'video_name'
+        ).value
+    );
+
+    formData.append(
+        'phone',
+        document.getElementById(
+            'video_phone'
+        ).value
+    );
+
+    formData.append(
+        'preferred_date',
+        document.getElementById(
+            'preferred_date'
+        ).value
+    );
+
+    formData.append(
+        'preferred_time',
+        document.getElementById(
+            'preferred_time'
+        ).value
+    );
+
+    formData.append(
+        'platform',
+        document.getElementById(
+            'platform'
+        ).value
+    );
+
+    fetch('/submit-video-viewing/',{
+
+        method:'POST',
+
+        headers:{
+            'X-CSRFToken':
+            document.querySelector(
+                '[name=csrfmiddlewaretoken]'
+            ).value
+        },
+
+        body:formData
+
+    })
+
+    .then(response=>response.json())
+
+    .then(data=>{
+
+        if(data.success){
+
+            alert(
+                'Video viewing request submitted successfully.'
+            );
+
+            document.getElementById('videoViewingForm').reset();
+
+            btn.disabled=false;
+
+            btn.innerHTML=
+                'Request Video Viewing';
+
+            videoSubmitting=false;
+        }
+
+    })
+
+    .catch(error=>{
+
+        btn.disabled=false;
+
+        btn.innerHTML=
+            'Request Video Viewing';
+
+        videoSubmitting=false;
+
+    });
+
+}
+
+/* ── SHARE ── */
+function shareProperty(type){
+  const url=window.location.href;
+  const text='Check out this stunning Azure Sea-View Villa in Anjuna, Goa — ₹4.2 Cr: ';
+  if(type==='wa') window.open('https://wa.me/?text='+encodeURIComponent(text+url),'_blank');
+  else if(type==='copy'){ navigator.clipboard.writeText(url).then(()=>alert('Link copied!')); }
+  else if(type==='mail') window.open('mailto:?subject=Azure Sea-View Villa Anjuna Goa&body='+encodeURIComponent(text+url));
+}
+
+/* ── GSAP SCROLL PARALLAX ── */
+gsap.to('.hero-main-img img',{
+  yPercent:15,
+  scrollTrigger:{ trigger:'.hero',start:'top top',end:'bottom top',scrub:1 }
+});
+
+/* ── STICKY MOBILE BAR ── */
+const stickyBar=document.getElementById('stickyBar');
+window.addEventListener('scroll',()=>{
+  stickyBar.style.display = scrollY>600 ? 'flex' : 'none';
+});
+</script>
+
+{% endblock %}
+
+
+{% block footer %}
+    {% include 'base/footer_detail.html' %}
+{% endblock %}
+
+

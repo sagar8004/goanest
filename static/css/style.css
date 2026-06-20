@@ -1,0 +1,63 @@
+:root {
+  --teal:       #0D6E6E;
+  --teal-dark:  #094F4F;
+  --teal-light: #1A9090;
+  --sand:       #F5EDD3;
+  --sand-dark:  #E8D9B5;
+  --cream:      #FDFAF4;
+  --ink:        #1A1A18;
+  --ink-muted:  #4A4A44;
+  --gold:       #C4952A;
+  --white:      #FFFFFF;
+  --card-shadow: 0 4px 32px rgba(13,110,110,0.10);
+  --ff-display: 'Cormorant Garamond', Georgia, serif;
+  --ff-body:    'DM Sans', sans-serif;
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+
+html { scroll-behavior:smooth; }
+
+body {
+  font-family: var(--ff-body);
+  background: var(--cream);
+  color: var(--ink);
+  overflow-x: hidden;
+}
+
+/* ── CUSTOM CURSOR ── */
+.cursor {
+  width:10px; height:10px;
+  background:var(--teal);
+  border-radius:50%;
+  position:fixed; top:0; left:0;
+  pointer-events:none; z-index:9999;
+  transform:translate(-50%,-50%);
+  transition:width .3s,height .3s,background .3s;
+}
+.cursor-ring {
+  width:36px; height:36px;
+  border:1.5px solid var(--teal);
+  border-radius:50%;
+  position:fixed; top:0; left:0;
+  pointer-events:none; z-index:9998;
+  transform:translate(-50%,-50%);
+  transition:transform .12s ease,width .3s,height .3s,opacity .3s;
+  opacity:.6;
+}
+body:hover .cursor { opacity:1; }
+
+
+/* ── FLOATING WHATSAPP ── */
+.whatsapp-float {
+  position:fixed; bottom:2rem; right:2rem; z-index:900;
+  width:56px; height:56px;
+  background:#25D366;
+  border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 4px 20px rgba(37,211,102,.4);
+  text-decoration:none;
+  transition:transform .25s;
+}
+.whatsapp-float:hover { transform:scale(1.1); }
+.whatsapp-float svg { width:28px; height:28px; fill:white; }

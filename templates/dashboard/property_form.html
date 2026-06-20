@@ -1,0 +1,1085 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% block title %}{% if property %}Edit{% else %}Add{% endif %} Property — GoaNest{% endblock %}
+{% block nav_add %}{% if not property %}active{% endif %}{% endblock %}
+{% block nav_props %}{% if property %}active{% endif %}{% endblock %}
+{% block page_title %}{% if property %}Edit Property{% else %}Add New Property{% endif %}{% endblock %}
+
+{% block breadcrumb %}
+  <a href="{% url 'dashboard' %}">Dashboard</a><span>›</span>
+  <a href="{% url 'property_manage' %}">Properties</a><span>›</span>
+  <span>{% if property %}{{ property.title }}{% else %}New Listing{% endif %}</span>
+{% endblock %}
+
+{% block topbar_actions %}
+<button form="propertyForm" type="submit" class="topbar-btn primary">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+  {% if property %}Save Changes{% else %}Publish Listing{% endif %}
+</button>
+<a href="{% url 'property_manage' %}" class="topbar-btn secondary">Cancel</a>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── LAYOUT ── */
+.form-layout            { display:grid; grid-template-columns:1fr 300px; gap:1.5rem; align-items:start; }
+.form-sidebar-card      { position:sticky; top:80px; }
+
+/* ── MISC ── */
+.char-count             { font-size:.68rem; color:var(--ink-muted); text-align:right; margin-top:.2rem; }
+.price-display          { font-family:var(--ff-display); font-size:1.8rem; font-weight:600; color:var(--teal-dark); text-align:center; padding:1rem; background:var(--teal-light); border-radius:var(--radius); margin-bottom:1rem; }
+.checklist-item         { font-size:.78rem; padding:.2rem 0; }
+
+/* ── LEGAL CHECKBOXES ── */
+.legal-checks           { display:grid; grid-template-columns:1fr 1fr; gap:.5rem; }
+.legal-check            { display:flex; align-items:center; gap:.5rem; padding:.6rem .75rem; border:1px solid var(--border); border-radius:var(--radius); cursor:pointer; transition:var(--transition); font-size:.78rem; }
+.legal-check:hover      { border-color:var(--teal); }
+.legal-check input      { accent-color:var(--teal); width:14px; height:14px; flex-shrink:0; }
+
+/* ═══════════════════════════════════════════
+   DYNAMIC SECTION — shared styles for
+   Location / Amenities / Highlights / Legal
+═══════════════════════════════════════════ */
+.dyn-section            { border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+
+/* Column header bar */
+.dyn-header             { display:flex; gap:.7rem; padding:.55rem 1rem; background:#F8F5EE; border-bottom:1px solid var(--border); font-size:.63rem; font-weight:500; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-muted); align-items:center; }
+.dyn-header .col-icon   { width:148px; flex-shrink:0; }
+.dyn-header .col-wide   { flex:1; }
+.dyn-header .col-med    { flex:1; }
+.dyn-header .col-sm     { width:120px; flex-shrink:0; }
+.dyn-header .col-del    { width:34px; flex-shrink:0; }
+
+/* Each row */
+.dyn-row                { display:flex; gap:.7rem; padding:.6rem 1rem; border-bottom:1px solid #F0ECE4; align-items:center; animation:rowIn .2s ease; }
+.dyn-row:last-child     { border-bottom:none; }
+.dyn-row:hover          { background:#FDFBF7; }
+@keyframes rowIn        { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:translateY(0)} }
+
+/* Column widths inside rows (mirrors header) */
+.dyn-row .col-icon      { width:148px; flex-shrink:0; }
+.dyn-row .col-wide      { flex:1; }
+.dyn-row .col-med       { flex:1; }
+.dyn-row .col-sm        { width:120px; flex-shrink:0; }
+.dyn-row .col-del       { width:34px; flex-shrink:0; }
+
+/* Inputs inside dynamic rows */
+.dyn-select, .dyn-input {
+  width:100%; padding:.52rem .75rem;
+  border:1px solid var(--border); border-radius:var(--radius);
+  font-family:var(--ff-body); font-size:.84rem; color:var(--ink);
+  background:var(--white); outline:none;
+  transition:border-color .2s, box-shadow .2s;
+}
+.dyn-select             { appearance:none; cursor:pointer; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236A6A62' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:calc(100% - 9px) center; padding-right:1.8rem; }
+.dyn-select:focus,
+.dyn-input:focus        { border-color:var(--teal); box-shadow:0 0 0 3px rgba(13,110,110,.08); }
+.dyn-input::placeholder { color:#c0bdb4; }
+
+/* Delete button */
+.dyn-del-btn            { width:30px; height:30px; border-radius:var(--radius); border:1px solid var(--border); background:var(--white); color:var(--ink-muted); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:var(--transition); flex-shrink:0; }
+.dyn-del-btn:hover      { border-color:var(--danger); color:var(--danger); background:var(--danger-bg); }
+.dyn-del-btn svg        { width:13px; height:13px; }
+
+/* Empty state */
+.dyn-empty              { padding:1.8rem; text-align:center; color:var(--ink-muted); font-size:.82rem; font-weight:300; display:none; }
+.dyn-empty.show         { display:block; }
+
+/* Add row button at bottom */
+.dyn-add-btn            { display:flex; align-items:center; gap:.5rem; width:100%; padding:.65rem 1rem; background:transparent; border:none; border-top:1px dashed var(--border-2); color:var(--teal); font-family:var(--ff-body); font-size:.8rem; font-weight:500; cursor:pointer; transition:var(--transition); }
+.dyn-add-btn:hover      { background:var(--teal-light); }
+.dyn-add-btn svg        { width:14px; height:14px; flex-shrink:0; }
+
+/* Row count badge */
+.row-count              { font-size:.72rem; font-weight:500; color:var(--teal); background:var(--teal-light); padding:.15rem .6rem; border-radius:20px; }
+
+/* ── COVER IMAGE UPLOAD ── */
+.img-upload-zone        { border:2px dashed var(--border-2); border-radius:var(--radius); padding:1.8rem; text-align:center; cursor:pointer; background:var(--cream); transition:var(--transition); position:relative; overflow:hidden; }
+.img-upload-zone:hover  { border-color:var(--teal); background:var(--teal-light); }
+.img-upload-zone input  { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+.upload-icon            { font-size:2rem; margin-bottom:.4rem; }
+.upload-text            { font-size:.84rem; color:var(--ink-muted); font-weight:300; }
+.upload-text strong     { color:var(--teal); }
+
+/* ── GALLERY GRID ── */
+.gallery-grid           { display:grid; grid-template-columns:repeat(4,1fr); gap:.8rem; }
+.gallery-slot           { aspect-ratio:4/3; border:2px dashed var(--border-2); border-radius:var(--radius); overflow:hidden; position:relative; background:var(--cream); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:.35rem; transition:var(--transition); }
+.gallery-slot:hover     { border-color:var(--teal); }
+.gallery-slot img       { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.gallery-slot-lbl       { font-size:.68rem; color:var(--ink-muted); }
+.gallery-del-btn        { position:absolute; top:5px; right:5px; z-index:3; width:22px; height:22px; border-radius:50%; background:rgba(214,64,69,.88); color:#fff; border:none; font-size:.9rem; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .2s; }
+.gallery-slot:hover .gallery-del-btn  { opacity:1; }
+.gallery-previews       { display:grid; grid-template-columns:repeat(4,1fr); gap:.8rem; margin-top:1rem; }
+.gallery-preview-item   { aspect-ratio:4/3; border-radius:var(--radius); overflow:hidden; position:relative; }
+.gallery-preview-item img { width:100%; height:100%; object-fit:cover; }
+.gallery-preview-item .gallery-del-btn { opacity:0; }
+.gallery-preview-item:hover .gallery-del-btn { opacity:1; }
+
+/* ── RESPONSIVE ── */
+@media(max-width:1060px) {
+  .form-layout          { grid-template-columns:1fr; }
+  .form-sidebar-card    { position:static; }
+}
+@media(max-width:700px) {
+  .dyn-header .col-sm,
+  .dyn-row .col-sm      { display:none; }
+  .gallery-grid,
+  .gallery-previews     { grid-template-columns:repeat(2,1fr); }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<form method="post" enctype="multipart/form-data" id="propertyForm">
+{% csrf_token %}
+
+<div class="form-layout">
+
+  <!-- ══════════════════════════════════
+       LEFT COLUMN
+  ══════════════════════════════════ -->
+  <div>
+
+    <!-- ── 1. BASIC INFO ── -->
+    <div class="card" style="margin-bottom:1.2rem;">
+      <div class="card-header"><div class="card-title">🏠 Basic <em>Information</em></div></div>
+      <div class="card-body">
+
+        <div class="form-group">
+          <label>Property Title <span class="req">*</span></label>
+          <input class="form-control" name="title" id="titleInput"
+                 placeholder="e.g. Azure Sea-View Villa"
+                 value="{{ property.title|default:'' }}" required maxlength="200"/>
+          <div class="char-count"><span id="titleCount">{{ property.title|length|default:'0' }}</span>/200</div>
+        </div>
+
+        <div class="form-grid form-grid-3" style="margin-top:1rem;">
+          <div class="form-group">
+            <label>Property Type <span class="req">*</span></label>
+            <select class="form-control" name="property_type">
+              {% for val,label in property_type_choices %}
+                <option value="{{ val }}" {% if property.property_type == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Status <span class="req">*</span></label>
+            <select class="form-control" name="status" id="statusMainSelect">
+              {% for val,label in status_choices %}
+                <option value="{{ val }}" {% if property.status == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Badge Label</label>
+            <input class="form-control" name="badge"
+                   placeholder="e.g. Featured, New, Luxury"
+                   value="{{ property.badge|default:'' }}"/>
+          </div>
+        </div>
+
+        <div class="form-grid form-grid-2" style="margin-top:1rem;">
+          <div class="form-group">
+            <label>RERA Number</label>
+            <input class="form-control" name="rera_number" id="reraInput"
+                   placeholder="GOA/P/2024/00142"
+                   value="{{ property.rera_number|default:'' }}"/>
+          </div>
+          <div class="form-group" style="flex-direction:row; align-items:center; gap:1.5rem; padding-top:1.3rem;">
+            <div class="toggle-wrap">
+              <button type="button" class="toggle {% if property.featured %}on{% endif %}" data-for="featured"></button>
+              <input type="checkbox" name="featured" id="featured" {% if property.featured %}checked{% endif %} hidden/>
+              <span class="toggle-label">Featured</span>
+            </div>
+            <div class="toggle-wrap">
+              <button type="button" class="toggle {% if property.verified %}on{% endif %}" data-for="verified"></button>
+              <input type="checkbox" name="verified" id="verified" {% if property.verified %}checked{% endif %} hidden/>
+              <span class="toggle-label">Verified</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── 2. LOCATION ── -->
+    <div class="card" style="margin-bottom:1.2rem;">
+      <div class="card-header"><div class="card-title">📍 Location <em>Details</em></div></div>
+      <div class="card-body">
+
+        <div class="form-grid form-grid-2">
+          <div class="form-group">
+            <label>Region <span class="req">*</span></label>
+            <select class="form-control" name="region">
+              {% for val,label in region_choices %}
+                <option value="{{ val }}" {% if property.region == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Area Name <span class="req">*</span></label>
+            <input class="form-control" name="location" id="areaInput"
+                   placeholder="e.g. Anjuna, Calangute"
+                   value="{{ property.location|default:'' }}" required/>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top:1rem;">
+          <label>Full Address</label>
+          <input class="form-control" name="full_address"
+                 placeholder="e.g. Vagator Road, Anjuna, North Goa — 403509"
+                 value="{{ property.full_address|default:'' }}"/>
+        </div>
+
+        <div class="form-grid form-grid-3" style="margin-top:1rem;">
+          <div class="form-group">
+            <label>Pincode</label>
+            <input class="form-control" name="pincode" placeholder="403509" value="{{ property.pincode|default:'' }}"/>
+          </div>
+          <div class="form-group">
+            <label>Latitude</label>
+            <input class="form-control" type="number" step="any" name="latitude" placeholder="15.5793" value="{{ property.latitude|default:'' }}"/>
+          </div>
+          <div class="form-group">
+            <label>Longitude</label>
+            <input class="form-control" type="number" step="any" name="longitude" placeholder="73.7397" value="{{ property.longitude|default:'' }}"/>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top:1rem;">
+          <label>Google Maps Embed URL</label>
+          <input class="form-control" name="google_map_url"
+                 placeholder="https://maps.google.com/..."
+                 value="{{ property.google_maps_url|default:'' }}"/>
+          <div class="form-hint">Paste the share link from Google Maps for the property detail page.</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── 3. PRICING ── -->
+    <div class="card" style="margin-bottom:1.2rem;">
+      <div class="card-header"><div class="card-title">💰 Pricing</div></div>
+      <div class="card-body">
+        <div class="form-grid form-grid-2">
+          <div class="form-group">
+            <label>Price (₹) <span class="req">*</span></label>
+            <input class="form-control" type="number" name="price" id="priceInput"
+                   placeholder="42000000"
+                   value="{{ property.price|default:'' }}" required/>
+            <div class="form-hint">Enter full amount in ₹ — e.g. 42000000 for ₹4.2 Cr</div>
+          </div>
+          <div class="form-group">
+            <label>Price Label</label>
+            <input class="form-control" name="price_label"
+                   placeholder="onwards / negotiable / fixed"
+                   value="{{ property.price_label|default:'onwards' }}"/>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 4. SIZE & CONFIGURATION ── -->
+    <div class="card" style="margin-bottom:1.2rem;">
+      <div class="card-header"><div class="card-title">📐 Size & <em>Configuration</em></div></div>
+      <div class="card-body">
+        <div class="form-grid form-grid-4">
+          <div class="form-group">
+            <label>Bedrooms</label>
+            <input class="form-control" type="number" name="bedrooms" min="0" value="{{ property.bedrooms|default:0 }}"/>
+          </div>
+          <div class="form-group">
+            <label>Bathrooms</label>
+            <input class="form-control" type="number" name="bathrooms" min="0" value="{{ property.bathrooms|default:0 }}"/>
+          </div>
+          <div class="form-group">
+            <label>Built-up (m²)</label>
+            <input class="form-control" type="number" name="builtup_area" placeholder="320" value="{{ property.builtup_area|default:'' }}"/>
+          </div>
+          <div class="form-group">
+            <label>Plot Area (m²)</label>
+            <input class="form-control" type="number" name="area_sqft" placeholder="600" value="{{ property.area_sqft|default:'' }}"/>
+          </div>
+        </div>
+        <div class="form-grid form-grid-4" style="margin-top:1rem;">
+          <div class="form-group">
+            <label>Furnishing</label>
+            <select class="form-control" name="furnishing_status">
+              {% for val,label in furnish_status %}
+                <option value="{{ val }}" {% if property.furnishing_status == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Construction</label>
+            <select class="form-control" name="construction_status">
+              {% for val,label in construction_status %}
+                <option value="{{ val }}" {% if property.construction_status == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Year Built</label>
+            <input class="form-control" type="number" name="year_built" placeholder="2019" value="{{ property.year_built|default:'' }}"/>
+          </div>
+          <div class="form-group">
+            <label>Parking Space</label>
+            <input class="form-control" type="number" name="parking_spaces" min="0" value="{{ property.parking_spaces|default:0 }}"/>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         5. LOCATION & NEIGHBOURHOOD  — dynamic rows
+         Fields: icon | place name | distance (m) | description
+    ══════════════════════════════════════════════════ -->
+    <div class="card" style="margin-bottom:1.2rem;">
+      <div class="card-header">
+        <div class="card-title">🗺️ Location & <em>Neighbourhood</em></div>
+        <div style="display:flex;align-items:center;gap:.7rem;">
+          <span class="row-count" id="nearbyCount">0 added</span>
+          <button type="button" class="topbar-btn primary" style="padding:.4rem .9rem;font-size:.75rem;" onclick="addRow('nearby')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Location
+          </button>
+        </div>
+      </div>
+
+      <div class="dyn-section">
+        <!-- Column headers -->
+        <div class="dyn-header">
+          <div class="col-icon">Icon</div>
+          <div class="col-wide">Place Name</div>
+          <div class="col-sm">Distance (m)</div>
+          <div class="col-med">Description</div>
+          <div class="col-del"></div>
+        </div>
+
+        <!-- Rows injected here -->
+        <div id="nearbyRows">
+          {% for loc in property.nearby_places.all %}
+          <div class="dyn-row">
+            <div class="col-icon">
+              <select class="dyn-select" name="nearby_icon[]">
+                {% for value,label in nearby_icons %}
+                  <option value="{{ value }}" {% if loc.icon == value %}selected{% endif %}>{{ value }} {{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-wide">
+              <input class="dyn-input" type="text" name="nearby_name[]"
+                     value="{{ loc.place_name|default:'' }}" placeholder="e.g. Anjuna Beach"/>
+            </div>
+            <div class="col-sm">
+              <input class="dyn-input" type="number" name="nearby_distance[]"
+                     value="{{ loc.distance|default:'' }}" placeholder="800"/>
+            </div>
+            <div class="col-med">
+              <input class="dyn-input" type="text" name="nearby_desc[]"
+                     value="{{ loc.short_description|default:'' }}" placeholder="Famous sunsets & cliff views"/>
+            </div>
+            <div class="col-del">
+              <button type="button" class="dyn-del-btn" onclick="removeRow(this,'nearby')" title="Remove">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="dyn-empty {% if not property.nearby_places.all %}show{% endif %}" id="nearbyEmpty">
+          No locations added yet. Click <strong>Add Location</strong> to begin.
+        </div>
+
+        <button type="button" class="dyn-add-btn" onclick="addRow('nearby')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add another location
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         6. AMENITIES & FEATURES — dynamic rows
+         Fields: icon | amenity name
+    ══════════════════════════════════════════════════ -->
+    <div class="card" style="margin-bottom:1.2rem;">
+      <div class="card-header">
+        <div class="card-title">✨ Amenities & <em>Features</em></div>
+        <div style="display:flex;align-items:center;gap:.7rem;">
+          <span class="row-count" id="amenityCount">0 added</span>
+          <button type="button" class="topbar-btn primary" style="padding:.4rem .9rem;font-size:.75rem;" onclick="addRow('amenity')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Amenity
+          </button>
+        </div>
+      </div>
+
+      <div class="dyn-section">
+        <div class="dyn-header">
+          <div class="col-icon">Icon</div>
+          <div class="col-wide">Amenity Name</div>
+          <div class="col-del"></div>
+        </div>
+
+        <div id="amenityRows">
+          {% for amenity in property.amenities.all %}
+          <div class="dyn-row">
+            <div class="col-icon">
+              <select class="dyn-select" name="amenity_icon[]">
+                {% for value,label in amenity_icons %}
+                  <option value="{{ value }}" {% if amenity.icon == value %}selected{% endif %}>{{ value }} {{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-wide">
+              <input class="dyn-input" type="text" name="amenity_name[]"
+                     value="{{ amenity.name|default:'' }}" placeholder="e.g. Infinity Swimming Pool"/>
+            </div>
+            <div class="col-del">
+              <button type="button" class="dyn-del-btn" onclick="removeRow(this,'amenity')" title="Remove">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="dyn-empty {% if not property.amenities.all %}show{% endif %}" id="amenityEmpty">
+          No amenities added yet. Click <strong>Add Amenity</strong> to begin.
+        </div>
+
+        <button type="button" class="dyn-add-btn" onclick="addRow('amenity')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add another amenity
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         7. KEY HIGHLIGHTS — dynamic rows
+         Fields: icon | title | description
+    ══════════════════════════════════════════════════ -->
+    <div class="card" style="margin-bottom:1.2rem;">
+      <div class="card-header">
+        <div class="card-title">🎨 Key <em>Highlights</em></div>
+        <div style="display:flex;align-items:center;gap:.7rem;">
+          <span class="row-count" id="highlightCount">0 added</span>
+          <button type="button" class="topbar-btn primary" style="padding:.4rem .9rem;font-size:.75rem;" onclick="addRow('highlight')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Highlight
+          </button>
+        </div>
+      </div>
+
+      <div class="dyn-section">
+        <div class="dyn-header">
+          <div class="col-icon">Icon</div>
+          <div class="col-med">Title</div>
+          <div class="col-wide">Description</div>
+          <div class="col-del"></div>
+        </div>
+
+        <div id="highlightRows">
+          {% for hl in property.highlights.all %}
+          <div class="dyn-row">
+            <div class="col-icon">
+              <select class="dyn-select" name="highlight_icon[]">
+                {% for value,label in key_highlight_icons %}
+                  <option value="{{ value }}" {% if hl.icon == value %}selected{% endif %}>{{ value }} {{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-med">
+              <input class="dyn-input" type="text" name="highlight_title[]"
+                     value="{{ hl.title|default:'' }}" placeholder="e.g. Sea Views"/>
+            </div>
+            <div class="col-wide">
+              <input class="dyn-input" type="text" name="highlight_desc[]"
+                     value="{{ hl.description|default:'' }}" placeholder="e.g. Unobstructed Arabian Sea view"/>
+            </div>
+            <div class="col-del">
+              <button type="button" class="dyn-del-btn" onclick="removeRow(this,'highlight')" title="Remove">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="dyn-empty {% if not property.highlights.all %}show{% endif %}" id="highlightEmpty">
+          No highlights added yet. Click <strong>Add Highlight</strong> to begin.
+        </div>
+
+        <button type="button" class="dyn-add-btn" onclick="addRow('highlight')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add another highlight
+        </button>
+      </div>
+    </div>
+
+    <!-- 8. LEGAL DOCUMENTATION — dynamic rows Fields: icon | title | description | status -->
+    <div class="card" style="margin-bottom:1.2rem;">
+      <div class="card-header">
+        <div class="card-title">⚖️ Legal <em>Documentation</em></div>
+        <div style="display:flex;align-items:center;gap:.7rem;">
+          <span class="row-count" id="legalCount">0 added</span>
+          <button type="button" class="topbar-btn primary" style="padding:.4rem .9rem;font-size:.75rem;" onclick="addRow('legal')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Document
+          </button>
+        </div>
+      </div>
+
+      <div class="dyn-section">
+        <div class="dyn-header">
+          <div class="col-icon">Icon</div>
+          <div class="col-med">Title</div>
+          <div class="col-wide">Description</div>
+          <div class="col-sm">Status</div>
+          <div class="col-del"></div>
+        </div>
+
+        <div id="legalRows">
+          {% for doc in property.legal_info.all %}
+          <div class="dyn-row">
+            <div class="col-icon">
+              <select class="dyn-select" name="legal_icon[]">
+                {% for value,label in legal_icons %}
+                  <option value="{{ value }}" {% if doc.icon == value %}selected{% endif %}>{{ value }} {{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-med">
+              <input class="dyn-input" type="text" name="legal_title[]"
+                     value="{{ doc.title|default:'' }}" placeholder="e.g. Title Deed"/>
+            </div>
+            <div class="col-wide">
+              <input class="dyn-input" type="text" name="legal_desc[]"
+                     value="{{ doc.description|default:'' }}" placeholder="e.g. Clear title, mutation complete"/>
+            </div>
+            <div class="col-sm">
+              <select class="dyn-select" name="legal_status[]">
+                {% for value,label in legal_status %}
+                  <option value="{{ value }}" {% if doc.status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-del">
+              <button type="button" class="dyn-del-btn" onclick="removeRow(this,'legal')" title="Remove">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="dyn-empty {% if not property.legal_info.all %}show{% endif %}" id="legalEmpty">
+          No documents added yet. Click <strong>Add Document</strong> to begin.
+        </div>
+
+        <button type="button" class="dyn-add-btn" onclick="addRow('legal')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add another document
+        </button>
+      </div>
+    </div>
+
+    <!-- ── 9. DESCRIPTION ── -->
+    <div class="card" style="margin-bottom:1.2rem;">
+      <div class="card-header"><div class="card-title">📝 Content & <em>Description</em></div></div>
+      <div class="card-body">
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label>Short Description <span style="text-transform:none;letter-spacing:0;font-weight:300;">(shown on listing cards)</span></label>
+          <input class="form-control" name="short_description" maxlength="300"
+                 placeholder="1-line shown on listing cards"
+                 value="{{ property.short_description|default:'' }}"/>
+        </div>
+        <div class="form-group">
+          <label>Full Description <span class="req">*</span></label>
+          <textarea class="form-control" name="description" id="descInput" rows="7"
+                    placeholder="Write detailed property description. Separate paragraphs with a blank line...">{{ property.description|default:'' }}</textarea>
+          <div class="form-hint">Separate paragraphs with a blank line — each renders as a separate paragraph on the property page.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 10. COVER IMAGE ── -->
+    <div class="card" style="margin-bottom:1.2rem;">
+      <div class="card-header"><div class="card-title">📷 Cover <em>Image</em></div></div>
+      <div class="card-body">
+        <div class="img-upload-zone" id="coverUploadZone">
+          <input type="file" name="featured_image" accept="image/*" onchange="previewCover(this)"/>
+          {% if property.featured_image %}
+            <img id="coverPreview" src="{{ property.featured_image.url }}" style="max-height:200px;border-radius:var(--radius);"/>
+          {% else %}
+            <div class="upload-icon">🏠</div>
+            <div class="upload-text"><strong>Click to upload</strong> or drag and drop</div>
+            <div class="upload-text" style="font-size:.72rem;margin-top:.3rem;">JPG, PNG — Recommended: 1200×800px</div>
+            <img id="coverPreview" style="display:none;max-height:200px;border-radius:var(--radius);margin-top:.8rem;"/>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 11. GALLERY IMAGES ── -->
+    <div class="card" style="margin-bottom:1.2rem;">
+      <div class="card-header">
+        <div class="card-title">🖼️ Gallery <em>Images</em></div>
+        <span class="pill pill-teal" id="galleryCount">0 selected</span>
+      </div>
+      <div class="card-body">
+
+        {# Existing images (edit mode) #}
+        {% if property.gallery.all %}
+        <div class="gallery-previews" id="existingImages">
+          {% for img in property.gallery.all %}
+          <div class="gallery-preview-item">
+            <img src="{{ img.gallery_images.url }}" alt="{{ img.caption|default:'Gallery image' }}"/>
+            <a href="{% url 'image_delete' img.id %}"
+               class="gallery-del-btn"
+               onclick="return confirm('Remove this image?')"
+               title="Remove image">×</a>
+          </div>
+          {% endfor %}
+        </div>
+        <div style="height:1rem;"></div>
+        {% endif %}
+
+        {# New uploads — multiple file input #}
+        <div class="img-upload-zone" id="galleryUploadZone"
+             onclick="document.getElementById('galleryInput').click()">
+          <input type="file" id="galleryInput" name="gallery_images"
+                 accept="image/*" multiple
+                 onchange="previewGallery(this)"
+                 style="display:none;"/>
+          <div class="upload-icon">🖼️</div>
+          <div class="upload-text"><strong>Click to select images</strong> or drag and drop</div>
+          <div class="upload-text" style="font-size:.72rem;margin-top:.3rem;">
+            Select multiple at once · JPG, PNG · Max 5MB each
+          </div>
+        </div>
+
+        {# Preview grid for newly selected images #}
+        <div class="gallery-previews" id="galleryPreviewGrid" style="margin-top:1rem;display:none;"></div>
+
+        <div style="margin-top:.8rem;font-size:.75rem;color:var(--ink-muted);">
+          Previously uploaded photos are shown above. New selections will be added on save.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 12. SEO ── -->
+    <div class="card" style="margin-bottom:1.2rem;">
+      <div class="card-header">
+        <div class="card-title">🔍 SEO <em>Settings</em></div>
+        <span class="pill pill-muted">Optional</span>
+      </div>
+      <div class="card-body">
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label>Meta Title</label>
+          <input class="form-control" name="meta_title" maxlength="160"
+                 placeholder="Azure Sea-View Villa, Anjuna — GoaNest"
+                 value="{{ property.meta_title|default:'' }}"/>
+        </div>
+        <div class="form-group">
+          <label>Meta Description</label>
+          <textarea class="form-control" name="meta_description" maxlength="320" rows="2"
+                    placeholder="4BHK luxury villa Anjuna North Goa...">{{ property.meta_description|default:'' }}</textarea>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /left -->
+
+  <!-- ══════════════════════════════════
+       RIGHT SIDEBAR
+  ══════════════════════════════════ -->
+  <div class="form-sidebar-card">
+
+    <!-- Price Preview -->
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="card-header"><div class="card-title">Live <em>Preview</em></div></div>
+      <div class="card-body" style="padding:1rem;">
+        <div class="price-display" id="pricePreview">
+          {% if property %}{{ property.price_crore }}{% else %}₹ —{% endif %}
+        </div>
+        <div style="font-size:.78rem;color:var(--ink-muted);text-align:center;margin-bottom:1rem;min-height:1.1rem;" id="titlePreview">
+          {{ property.title|default:'Property title will appear here' }}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.5rem;">
+          <button form="propertyForm" type="submit" class="topbar-btn primary"
+                  style="justify-content:center;width:100%;padding:.75rem;">
+            {% if property %}💾 Save Changes{% else %}🚀 Publish Listing{% endif %}
+          </button>
+          {% if property %}
+          <a href="{{ property.get_absolute_url }}" target="_blank"
+             class="topbar-btn secondary"
+             style="justify-content:center;width:100%;padding:.75rem;">
+            👁 View on Site
+          </a>
+          <a href="{% url 'property_delete' property.pk %}"
+             onclick="return confirm('Delete this property permanently?')"
+             class="topbar-btn"
+             style="justify-content:center;width:100%;padding:.75rem;background:var(--danger-bg);color:var(--danger);border:1px solid #f4c0c2;">
+            🗑 Delete Property
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% comment %} <!-- Quick Status -->
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="card-header"><div class="card-title">Quick <em>Status</em></div></div>
+      <div class="card-body" style="padding:.8rem;display:flex;flex-direction:column;gap:.4rem;">
+        {% for val,label in status_choices %}
+        <label style="display:flex;align-items:center;gap:.6rem;padding:.48rem .75rem;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:.82rem;transition:var(--transition);"
+               onmouseover="this.style.borderColor='var(--teal)'"
+               onmouseout="this.style.borderColor='var(--border)'">
+          <input type="radio" name="status_sidebar" value="{{ val }}"
+                 {% if property.status == val %}checked{% endif %}
+                 style="accent-color:var(--teal);"
+                 onchange="document.getElementById('statusMainSelect').value=this.value"/>
+          {% if val == 'available' %}✅{% elif val == 'sold' %}🔴{% elif val == 'rented' %}🟡{% else %}⚪{% endif %}
+          {{ label }}
+        </label>
+        {% endfor %}
+      </div>
+    </div> {% endcomment %}
+
+    <!-- Publish Checklist -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">Publish <em>Checklist</em></div></div>
+      <div class="card-body" style="padding:.8rem;">
+        <div style="display:flex;flex-direction:column;">
+          <div class="checklist-item" id="chk_title">⬜ Title added</div>
+          <div class="checklist-item" id="chk_price">⬜ Price set</div>
+          <div class="checklist-item" id="chk_location">⬜ Location filled</div>
+          <div class="checklist-item" id="chk_desc">⬜ Description written</div>
+          <div class="checklist-item" id="chk_rera">⬜ RERA number added</div>
+          <div class="checklist-item" id="chk_amenities">⬜ Amenities added</div>
+          <div class="checklist-item" id="chk_cover">⬜ Cover image uploaded</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /sidebar -->
+
+</div><!-- /form-layout -->
+
+</form>
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════
+   OPTION DATA — built from Django template variables at render time
+   Each section stores its icon options as an array of [value, label]
+═══════════════════════════════════════════════════════════════ */
+const NEARBY_ICONS = [
+  {% for value,label in nearby_icons %}["{{ value }}", "{{ value }} {{ label }}"],{% endfor %}
+];
+const AMENITY_ICONS = [
+  {% for value,label in amenity_icons %}["{{ value }}", "{{ value }} {{ label }}"],{% endfor %}
+];
+const HIGHLIGHT_ICONS = [
+  {% for value,label in key_highlight_icons %}["{{ value }}", "{{ value }} {{ label }}"],{% endfor %}
+];
+const LEGAL_ICONS = [
+  {% for value,label in legal_icons %}["{{ value }}", "{{ value }} {{ label }}"],{% endfor %}
+];
+const LEGAL_STATUS = [
+  {% for value,label in legal_status %}["{{ value }}", "{{ label }}"],{% endfor %}
+];
+
+/* ── Build a <select> from an array of [value, label] pairs ── */
+function buildSelect(name, options, cls) {
+  const sel = document.createElement('select');
+  sel.name  = name;
+  sel.className = cls || 'dyn-select';
+  options.forEach(([val, lbl]) => {
+    const opt   = document.createElement('option');
+    opt.value   = val;
+    opt.textContent = lbl;
+    sel.appendChild(opt);
+  });
+  return sel;
+}
+
+/* ── Build a text input ── */
+function buildInput(name, placeholder) {
+  const inp = document.createElement('input');
+  inp.type  = 'text';
+  inp.name  = name;
+  inp.className   = 'dyn-input';
+  inp.placeholder = placeholder;
+  return inp;
+}
+
+/* ── Build number input ── */
+function buildNumberInput(name, placeholder) {
+  const inp = buildInput(name, placeholder);
+  inp.type  = 'number';
+  return inp;
+}
+
+/* ── Delete button ── */
+function buildDelBtn(section) {
+  const btn = document.createElement('button');
+  btn.type  = 'button';
+  btn.className   = 'dyn-del-btn';
+  btn.title = 'Remove';
+  btn.setAttribute('onclick', `removeRow(this,'${section}')`);
+  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <polyline points="3 6 5 6 21 6"/>
+    <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+    <path d="M10 11v6M14 11v6"/>
+  </svg>`;
+  return btn;
+}
+
+/* ── Wrap element in a col div ── */
+function col(cls, child) {
+  const d = document.createElement('div');
+  d.className = cls;
+  d.appendChild(child);
+  return d;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   addRow(section)  — creates and appends a new row
+═══════════════════════════════════════════════════════════════ */
+function addRow(section) {
+  const container = document.getElementById(section + 'Rows');
+  const emptyEl   = document.getElementById(section + 'Empty');
+
+  const row = document.createElement('div');
+  row.className = 'dyn-row';
+
+  if (section === 'nearby') {
+    row.appendChild(col('col-icon', buildSelect('nearby_icon[]',    NEARBY_ICONS)));
+    row.appendChild(col('col-wide', buildInput('nearby_name[]',     'e.g. Anjuna Beach')));
+    row.appendChild(col('col-sm',   buildNumberInput('nearby_distance[]', '800')));
+    row.appendChild(col('col-med',  buildInput('nearby_desc[]',     'e.g. Famous sunsets & cliff views')));
+  }
+  else if (section === 'amenity') {
+    row.appendChild(col('col-icon', buildSelect('amenity_icon[]',   AMENITY_ICONS)));
+    row.appendChild(col('col-wide', buildInput('amenity_name[]',    'e.g. Infinity Swimming Pool')));
+  }
+  else if (section === 'highlight') {
+    row.appendChild(col('col-icon', buildSelect('highlight_icon[]', HIGHLIGHT_ICONS)));
+    row.appendChild(col('col-med',  buildInput('highlight_title[]', 'e.g. Sea Views')));
+    row.appendChild(col('col-wide', buildInput('highlight_desc[]',  'e.g. Unobstructed Arabian Sea view')));
+  }
+  else if (section === 'legal') {
+    row.appendChild(col('col-icon', buildSelect('legal_icon[]',     LEGAL_ICONS)));
+    row.appendChild(col('col-med',  buildInput('legal_title[]',     'e.g. Title Deed')));
+    row.appendChild(col('col-wide', buildInput('legal_desc[]',      'e.g. Clear title, mutation complete')));
+    row.appendChild(col('col-sm',   buildSelect('legal_status[]',   LEGAL_STATUS)));
+  }
+
+  row.appendChild(col('col-del', buildDelBtn(section)));
+
+  container.appendChild(row);
+  emptyEl.classList.remove('show');
+  updateCount(section);
+
+  // Auto-fill amenity name when icon changes
+  if (section === 'amenity') {
+    const sel  = row.querySelector('select');
+    const inp  = row.querySelector('input[type=text]');
+    sel.addEventListener('change', () => {
+      if (!inp.value.trim()) {
+        const found = AMENITY_ICONS.find(([v]) => v === sel.value);
+        if (found) inp.value = found[1].replace(/^.+?\s/, ''); // strip emoji
+      }
+    });
+    inp.focus();
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   removeRow(btn, section) — removes with fade-out
+═══════════════════════════════════════════════════════════════ */
+function removeRow(btn, section) {
+  const row = btn.closest('.dyn-row');
+  row.style.transition = 'opacity .18s ease, transform .18s ease';
+  row.style.opacity    = '0';
+  row.style.transform  = 'translateX(6px)';
+  setTimeout(() => {
+    row.remove();
+    const container = document.getElementById(section + 'Rows');
+    const emptyEl   = document.getElementById(section + 'Empty');
+    if (container.children.length === 0) emptyEl.classList.add('show');
+    updateCount(section);
+  }, 190);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   updateCount(section) — refreshes the badge and checklist item
+═══════════════════════════════════════════════════════════════ */
+function updateCount(section) {
+  const rows    = document.querySelectorAll(`#${section}Rows .dyn-row`);
+  const count   = rows.length;
+  const badge   = document.getElementById(section + 'Count');
+  if (badge) badge.textContent = count === 0 ? '0 added'
+                                : count === 1 ? '1 added'
+                                : count + ' added';
+
+  // Checklist update for amenities
+  if (section === 'amenity') {
+    setCheck('chk_amenities', count > 0,
+      count > 0 ? `${count} amenit${count===1?'y':'ies'} added` : 'Amenities added');
+  }
+}
+
+/* ── Run counts on page load (edit mode has pre-filled rows) ── */
+['nearby','amenity','highlight','legal'].forEach(updateCount);
+
+
+/* ═══════════════════════════════════════════════════════════════
+   PRICE DISPLAY
+═══════════════════════════════════════════════════════════════ */
+const priceInput   = document.getElementById('priceInput');
+const pricePreview = document.getElementById('pricePreview');
+
+function updatePrice() {
+  const v = parseFloat(priceInput?.value) || 0;
+  if      (v >= 10_000_000) pricePreview.textContent = '₹' + (v / 10_000_000).toFixed(2).replace(/\.?0+$/, '') + ' Cr';
+  else if (v >= 100_000)    pricePreview.textContent = '₹' + (v / 100_000).toFixed(1).replace(/\.0$/, '')      + ' L';
+  else if (v > 0)           pricePreview.textContent = '₹' + v.toLocaleString('en-IN');
+  else                      pricePreview.textContent = '₹ —';
+  setCheck('chk_price', !!priceInput?.value.trim(), 'Price set');
+}
+priceInput?.addEventListener('input', updatePrice);
+updatePrice();
+
+
+/* ═══════════════════════════════════════════════════════════════
+   TITLE PREVIEW + CHAR COUNT
+═══════════════════════════════════════════════════════════════ */
+const titleInput   = document.getElementById('titleInput');
+const titlePreview = document.getElementById('titlePreview');
+const titleCount   = document.getElementById('titleCount');
+
+function updateTitle() {
+  titlePreview.textContent = titleInput.value.trim() || 'Property title will appear here';
+  titleCount.textContent   = titleInput.value.length;
+  setCheck('chk_title', !!titleInput.value.trim(), 'Title added');
+}
+titleInput?.addEventListener('input', updateTitle);
+updateTitle();
+
+
+/* ═══════════════════════════════════════════════════════════════
+   PUBLISH CHECKLIST
+═══════════════════════════════════════════════════════════════ */
+function setCheck(id, done, label) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('done', done);
+  el.textContent = (done ? '✅ ' : '⬜ ') + label;
+}
+
+function updateChecklist() {
+  setCheck('chk_title',    !!titleInput?.value.trim(),                              'Title added');
+  setCheck('chk_price',    !!priceInput?.value.trim(),                              'Price set');
+  setCheck('chk_location', !!document.querySelector('[name=location]')?.value.trim(), 'Location filled');
+  setCheck('chk_desc',     !!document.getElementById('descInput')?.value.trim(),   'Description written');
+  setCheck('chk_rera',     !!document.getElementById('reraInput')?.value.trim(),   'RERA number added');
+}
+document.querySelectorAll('.form-control').forEach(el => el.addEventListener('input', updateChecklist));
+updateChecklist();
+
+
+/* ═══════════════════════════════════════════════════════════════
+   COVER IMAGE PREVIEW
+═══════════════════════════════════════════════════════════════ */
+function previewCover(input) {
+  const preview = document.getElementById('coverPreview');
+  if (!input.files || !input.files[0]) return;
+  const r = new FileReader();
+  r.onload = e => {
+    preview.src   = e.target.result;
+    preview.style.display = 'block';
+    setCheck('chk_cover', true, 'Cover image uploaded');
+  };
+  r.readAsDataURL(input.files[0]);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   GALLERY MULTI-PREVIEW
+═══════════════════════════════════════════════════════════════ */
+function previewGallery(input) {
+  const grid  = document.getElementById('galleryPreviewGrid');
+  const badge = document.getElementById('galleryCount');
+  if (!input.files || !input.files.length) return;
+
+  grid.innerHTML = '';  // clear previous previews
+  grid.style.display = 'grid';
+
+  Array.from(input.files).forEach((file, idx) => {
+    if (!file.type.startsWith('image/')) return;
+    const r = new FileReader();
+    r.onload = e => {
+      const item = document.createElement('div');
+      item.className = 'gallery-preview-item';
+      item.innerHTML = `
+        <img src="${e.target.result}" alt="Preview ${idx + 1}"/>
+        <button type="button" class="gallery-del-btn"
+                onclick="removeGalleryPreview(this, ${idx})"
+                title="Remove this image">×</button>
+      `;
+      grid.appendChild(item);
+    };
+    r.readAsDataURL(file);
+  });
+
+  badge.textContent = input.files.length + ' selected';
+}
+
+function removeGalleryPreview(btn, idx) {
+  btn.closest('.gallery-preview-item').remove();
+  // Note: can't modify FileList directly.
+  // In production, use a FormData approach or flag removed files.
+  const remaining = document.querySelectorAll('#galleryPreviewGrid .gallery-preview-item').length;
+  document.getElementById('galleryCount').textContent = remaining + ' selected';
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   TOGGLE SWITCHES
+═══════════════════════════════════════════════════════════════ */
+document.querySelectorAll('.toggle').forEach(toggle => {
+  toggle.addEventListener('click', function () {
+    this.classList.toggle('on');
+    const inp = document.getElementById(this.dataset.for);
+    if (inp) inp.checked = this.classList.contains('on');
+  });
+});
+
+
+/* ═══════════════════════════════════════════════════════════════
+   STATUS SYNC — sidebar radios ↔ main select
+═══════════════════════════════════════════════════════════════ */
+document.getElementById('statusMainSelect')?.addEventListener('change', function () {
+  document.querySelectorAll('[name=status_sidebar]').forEach(r => r.checked = r.value === this.value);
+});
+
+
+// Toggle switches
+document.querySelectorAll('.toggle').forEach(t=>{
+  t.addEventListener('click',function(){
+    this.classList.toggle('on');
+    const inp = document.getElementById(this.dataset.for);
+    if(inp) inp.checked = this.classList.contains('on');
+  });
+});
+
+
+</script>
+{% endblock %}

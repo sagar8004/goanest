@@ -1,0 +1,102 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% block title %}Video Enquiries — GoaNest Dashboard{% endblock %}
+{% block nav_videoenquiries %}active{% endblock %}
+{% block page_title %}Video View Enquiries{% endblock %}
+{% block breadcrumb %}<a href="{% url 'dashboard' %}">Dashboard</a><span>›</span><span>Video Enquiries</span>{% endblock %}
+{% block topbar_actions %}
+<span class="pill pill-success" style="font-size:.75rem;padding:.4rem .9rem;">{{ unread_count }} All Enquires</span>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="filter-bar">
+    <div class="search-input-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="search-input" type="text" placeholder="Search by name, phone, email…" id="searchInput"/>
+    </div>
+    <select class="filter-select" id="filterRead">
+      <option value="">All Enquiries</option>
+      <option value="unread">Unread Only</option>
+      <option value="read">Read Only</option>
+    </select>
+    <select class="filter-select" id="filterType">
+      <option value="">All Buyer Types</option>
+      <option value="indian">Indian Resident</option>
+      <option value="nri">NRI</option>
+      <option value="oci">OCI</option>
+      <option value="foreign">Foreign</option>
+    </select>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Buyer Name</th><th>Phone</th><th>Property</th><th>Time</th><th>Date</th><th>Platform</th><th>Action</th>
+      </tr></thead>
+      <tbody id="enquiryTable">
+      {% for e in total_enquiries %}
+      <tr data-name="{{ e.name|lower }}"  data-phone="{{ e.phone|lower }}" data-email="{{ e.email|lower }}">
+        <td>
+          <div style="display:flex;align-items:center;gap:.7rem;">
+            <div style="width:34px;height:34px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;font-family:var(--ff-display);font-size:.9rem;color:var(--sand);font-weight:600;flex-shrink:0;">
+              {{ e.name|first|upper }}
+            </div>
+            <div>
+              <div style="font-weight:500;font-size:.85rem;">{{ e.name }}</div>
+              {% comment %} <div style="font-size:.7rem;color:var(--ink-muted);">{{ e.email|default:"—" }}</div> {% endcomment %}
+            </div>
+          </div>
+        </td>
+        <td>
+          <a href="https://wa.me/{{ e.phone|cut:'+' }}" target="_blank" style="color:var(--teal);font-size:.82rem;text-decoration:none;font-weight:500;">{{ e.phone }}</a>
+        </td>
+        <td style="font-size:.8rem;color:var(--ink-muted);">{{ e.property}}</td>
+        
+        <td style="max-width:180px;font-size:.78rem;color:var(--ink-muted);font-weight:300;">
+          <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;" title="{{ e.message }}">
+            {{ e.preferred_time }}
+          </div>
+        </td>
+        <td style="font-size:.78rem;color:var(--ink-muted);white-space:nowrap;">{{ e.preferred_date }}</td>
+        <td style="font-size:.8rem;color:var(--ink-muted);">{{ e.platform}}</td>
+        <td>
+          <div class="action-group">
+            <a href="{% url 'video_enquiry_delete' e.pk %}" class="action-btn danger" title="Delete" onclick="return confirm('Delete this enquiry permanently? This cannot be undone.')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+            </a>
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9">
+        <div class="empty-state">
+          <div class="empty-icon">💬</div>
+          <div class="empty-title">No enquiries yet</div>
+          <div class="empty-sub">When buyers enquire from your website, they'll appear here.</div>
+        </div>
+      </td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filterTable(){
+  const q  = document.getElementById('searchInput').value.toLowerCase();
+  const rd = document.getElementById('filterRead').value;
+  const tp = document.getElementById('filterType').value;
+  document.querySelectorAll('#enquiryTable tr').forEach(row=>{
+    const matchQ  = !q  || (row.dataset.name||'').includes(q)||(row.dataset.phone||'').includes(q);
+    const matchRd = !rd || row.dataset.read===rd;
+    const matchTp = !tp || row.dataset.type===tp;
+    row.style.display = (matchQ&&matchRd&&matchTp)?'':'none';
+  });
+}
+['searchInput','filterRead','filterType'].forEach(id=>{
+  document.getElementById(id)?.addEventListener('input',filterTable);
+  document.getElementById(id)?.addEventListener('change',filterTable);
+});
+</script>
+{% endblock %}

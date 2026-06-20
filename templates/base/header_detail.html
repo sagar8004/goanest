@@ -1,0 +1,14 @@
+<!-- ── NAV ── -->
+<nav id="navbar">
+  <a href="{% url 'home' %}" class="nav-back">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+    Back to Listings
+  </a>
+  <a href="goa-realestate-home.html" class="nav-logo">Goa<span>Nest</span></a>
+  <ul class="nav-links">
+    <li><a href="{% url 'home' %}#listings">All Listings</a></li>
+    <li><a href="{% url 'home' %}#goa-guide">Explore Goa</a></li>
+    <li><a href="{% url 'home' %}#legal">Legal Help</a></li>
+    <li><a href="#" class="nav-cta" onclick="openModal();return false;">Book Viewing</a></li>
+  </ul>
+</nav>

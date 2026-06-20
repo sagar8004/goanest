@@ -1,0 +1,559 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% block title %}Enquiry #{{ enquiry.id }} — GoaNest{% endblock %}
+{% block nav_enquiries %}active{% endblock %}
+{% block page_title %}Enquiry Detail{% endblock %}
+
+{% block breadcrumb %}
+  <a href="{% url 'dashboard' %}">Dashboard</a><span>›</span>
+  <a href="{% url 'enquiry_list' %}">Enquiries</a><span>›</span>
+  <span>#{{ enquiry.id }} — {{ enquiry.name }}</span>
+{% endblock %}
+
+{% block topbar_actions %}
+  <a href="{% url 'enquiry_list' %}" class="topbar-btn secondary">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+      <path d="M19 12H5M12 5l-7 7 7 7"/>
+    </svg>
+    Back to Enquiries
+  </a>
+  {% comment %} {% if not enquiry.is_read %}
+  <a href="" class="topbar-btn primary">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+    Mark as Read
+  </a>
+  {% endif %} {% endcomment %}
+{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── PAGE GRID ── */
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 1.4rem;
+  align-items: start;
+}
+
+/* ── BUYER HERO CARD ── */
+.buyer-hero {
+  background: var(--teal-dark);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 1.2rem;
+}
+.buyer-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ff-display);
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+.buyer-name {
+  font-family: var(--ff-display);
+  font-size: 1.6rem;
+  font-weight: 400;
+  color: var(--sand);
+  margin-bottom: .25rem;
+}
+.buyer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+  align-items: center;
+}
+.buyer-meta-item {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .78rem;
+  color: rgba(245,237,211,.65);
+}
+.buyer-meta-item svg { width: 13px; height: 13px; opacity: .7; }
+.buyer-badge {
+  font-size: .63rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: .22rem .65rem;
+  border-radius: 20px;
+}
+.badge-new    { background: var(--warning-bg); color: var(--warning); }
+.badge-read   { background: #f0ece4; color: var(--ink-muted); }
+
+/* ── MESSAGE CARD ── */
+.message-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 1.2rem;
+  box-shadow: var(--shadow-sm);
+}
+.message-header {
+  padding: 1rem 1.4rem;
+  background: #F8F5EE;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.message-label {
+  font-size: .7rem;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.message-label svg { width: 14px; height: 14px; color: var(--teal); }
+.message-date {
+  font-size: .72rem;
+  color: var(--ink-muted);
+}
+.message-body {
+  padding: 1.8rem;
+}
+.message-text {
+  font-size: .97rem;
+  font-weight: 300;
+  color: var(--ink);
+  line-height: 1.85;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.message-empty {
+  font-size: .88rem;
+  color: var(--ink-muted);
+  font-style: italic;
+  padding: 1rem 0;
+}
+
+/* ── INFO ROW TABLE ── */
+.info-table { width: 100%; border-collapse: collapse; }
+.info-table tr { border-bottom: 1px solid #F0ECE4; }
+.info-table tr:last-child { border-bottom: none; }
+.info-table td {
+  padding: .75rem 1rem;
+  font-size: .84rem;
+  vertical-align: top;
+}
+.info-table td:first-child {
+  font-size: .68rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  width: 130px;
+  white-space: nowrap;
+  padding-top: .85rem;
+}
+.info-table td:last-child { color: var(--ink); font-weight: 400; }
+
+/* ── PROPERTY MINI CARD ── */
+.property-mini {
+  display: flex;
+  align-items: center;
+  gap: .9rem;
+  padding: 1rem;
+  background: var(--cream);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-decoration: none;
+  transition: var(--transition);
+}
+.property-mini:hover { border-color: var(--teal); box-shadow: var(--shadow-sm); }
+.property-mini-img {
+  width: 60px;
+  height: 48px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--border);
+}
+.property-mini-img img { width: 100%; height: 100%; object-fit: cover; }
+.property-mini-name {
+  font-size: .88rem;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: .15rem;
+}
+.property-mini-loc {
+  font-size: .73rem;
+  color: var(--ink-muted);
+}
+.property-mini-price {
+  font-family: var(--ff-display);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--teal-dark);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* ── ACTION BUTTONS ── */
+.action-stack {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+.action-btn-full {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .55rem;
+  padding: .75rem 1rem;
+  border-radius: var(--radius);
+  font-family: var(--ff-body);
+  font-size: .8rem;
+  font-weight: 500;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  transition: var(--transition);
+  width: 100%;
+}
+.action-btn-full svg { width: 15px; height: 15px; flex-shrink: 0; }
+.btn-whatsapp { background: #25D366; color: #fff; }
+.btn-whatsapp:hover { background: #1fb558; transform: translateY(-1px); }
+.btn-call     { background: var(--teal); color: #fff; }
+.btn-call:hover { background: var(--teal-dark); transform: translateY(-1px); }
+.btn-email    { background: var(--cream); color: var(--ink); border: 1px solid var(--border); }
+.btn-email:hover { border-color: var(--teal); background: var(--teal-light); }
+.btn-delete   { background: var(--danger-bg); color: var(--danger); border: 1px solid #f0c4c5; }
+.btn-delete:hover { background: #fce8e8; }
+
+/* ── NAV PILLS (prev/next) ── */
+.enq-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.2rem;
+}
+.enq-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .78rem;
+  color: var(--teal);
+  text-decoration: none;
+  padding: .4rem .8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--white);
+  transition: var(--transition);
+}
+.enq-nav-btn:hover { border-color: var(--teal); background: var(--teal-light); }
+.enq-nav-btn svg { width: 13px; height: 13px; }
+.enq-nav-count { font-size: .75rem; color: var(--ink-muted); }
+
+/* ── DIVIDER ── */
+.section-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 1.2rem 0;
+}
+
+/* ── RESPONSIVE ── */
+@media(max-width: 900px) {
+  .detail-grid { grid-template-columns: 1fr; }
+  .buyer-hero  { flex-direction: column; align-items: flex-start; gap: 1rem; }
+}
+@media(max-width: 600px) {
+  .buyer-avatar { width: 48px; height: 48px; font-size: 1.3rem; }
+  .buyer-name   { font-size: 1.3rem; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── MAIN 2-COL GRID ── -->
+<div class="detail-grid">
+
+  <!-- ══ LEFT COLUMN ══ -->
+  <div>
+
+    <!-- MESSAGE CARD -->
+    <div class="message-card">
+      <div class="message-header">
+        <div class="message-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+          </svg>
+          Message from {{ enquiry.name }}
+        </div>
+        <div class="message-date">{{ enquiry.created_at|date:"d M Y, H:i A" }}</div>
+      </div>
+      <div class="message-body">
+        {% if enquiry.message %}
+          <div class="message-text">{{ enquiry.message }}</div>
+        {% else %}
+          <div class="message-empty">No message was included with this enquiry.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ENQUIRY DETAILS TABLE -->
+    <div class="card" style="margin-bottom:1.2rem;">
+      <div class="card-header">
+        <div class="card-title">Enquiry <em>Details</em></div>
+      </div>
+      <table class="info-table">
+        <tr>
+          <td>Full Name</td>
+          <td><strong>{{ enquiry.name }}</strong></td>
+        </tr>
+        <tr>
+          <td>Phone</td>
+          <td>
+            <a href="tel:{{ enquiry.phone }}" style="color:var(--teal);text-decoration:none;font-weight:500;">
+              {{ enquiry.phone }}
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td>Email</td>
+          <td>
+            {% if enquiry.email %}
+            <a href="mailto:{{ enquiry.email }}" style="color:var(--teal);text-decoration:none;">
+              {{ enquiry.email }}
+            </a>
+            {% else %}
+            <span style="color:var(--ink-muted);font-style:italic;">Not provided</span>
+            {% endif %}
+          </td>
+        </tr>
+        <tr>
+          <td>Property</td>
+          <td>
+            {% if enquiry.property %}
+              <a href=""
+                 style="color:var(--teal);text-decoration:none;font-weight:500;">
+                {{ enquiry.property.title }}
+              </a>
+              <span style="color:var(--ink-muted);font-size:.78rem;"> · {{ enquiry.property.location }}</span>
+            {% else %}
+              <span style="color:var(--ink-muted);font-style:italic;">General enquiry</span>
+            {% endif %}
+          </td>
+        </tr>
+        <tr>
+          <td>Received</td>
+          <td>{{ enquiry.created_at|date:"l, d F Y" }} at {{ enquiry.created_at|date:"H:i" }}</td>
+        </tr>
+        {% comment %} <tr>
+          <td>Status</td>
+          <td>
+            {% if enquiry.is_read %}
+              <span class="pill pill-muted">Read</span>
+            {% else %}
+              <span class="pill pill-warning">● New — Unread</span>
+            {% endif %}
+          </td>
+        </tr> {% endcomment %}
+      </table>
+    </div>
+
+    <!-- PROPERTY DETAILS (if linked) -->
+    {% if enquiry.property %}
+    <div class="card" style="margin-bottom:1.2rem;">
+      <div class="card-header">
+        <div class="card-title">Enquired <em>Property</em></div>
+        <a href="{% url 'property_edit' enquiry.property.pk %}"
+           class="topbar-btn secondary" style="padding:.35rem .8rem;font-size:.72rem;">
+          Edit Property →
+        </a>
+      </div>
+      <div style="padding:1rem 1.2rem;">
+        <a href="{% url 'property_detail' enquiry.property.slug %}"
+           target="_blank" class="property-mini">
+          <div class="property-mini-img">
+            {% if enquiry.property.featured_image %}
+              <img src="{{ enquiry.property.featured_image.url }}"
+                   alt="{{ enquiry.property.title }}"/>
+            {% else %}
+              <div style="width:100%;height:100%;display:flex;align-items:center;
+                          justify-content:center;font-size:1.2rem;background:#f0ece4;">🏠</div>
+            {% endif %}
+          </div>
+          <div>
+            <div class="property-mini-name">{{ enquiry.property.title }}</div>
+            <div class="property-mini-loc">
+              📍 {{ enquiry.property.location }}
+              {% if enquiry.property.region %}· {{ enquiry.property.region }}{% endif %}
+            </div>
+          </div>
+          <div class="property-mini-price">{{ enquiry.property.price_crore }}</div>
+        </a>
+
+        <div class="section-divider"></div>
+
+        <!-- Property spec row -->
+        <div style="display:flex;gap:1.5rem;flex-wrap:wrap;">
+          {% if enquiry.property.bedrooms %}
+          <div style="font-size:.82rem;color:var(--ink-muted);">
+            🛏 <strong style="color:var(--ink);">{{ enquiry.property.bedrooms }}</strong> Beds
+          </div>
+          {% endif %}
+          {% if enquiry.property.bathrooms %}
+          <div style="font-size:.82rem;color:var(--ink-muted);">
+            🚿 <strong style="color:var(--ink);">{{ enquiry.property.bathrooms }}</strong> Baths
+          </div>
+          {% endif %}
+          {% if enquiry.property.builtup_area %}
+          <div style="font-size:.82rem;color:var(--ink-muted);">
+            📐 <strong style="color:var(--ink);">{{ enquiry.property.builtup_area }}</strong> m²
+          </div>
+          {% endif %}
+          <div style="font-size:.82rem;color:var(--ink-muted);">
+            Status:
+            {% if enquiry.property.status == 'available' %}
+              <span style="color:var(--success);font-weight:500;">Available</span>
+            {% elif enquiry.property.status == 'sold' %}
+              <span style="color:var(--danger);font-weight:500;">Sold</span>
+            {% else %}
+              <span style="color:var(--warning);font-weight:500;">{{ enquiry.property.get_status_display }}</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div><!-- /left -->
+
+  <!-- ══ RIGHT SIDEBAR ══ -->
+  <div>
+
+    <!-- QUICK ACTIONS -->
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="card-header"><div class="card-title">Quick <em>Actions</em></div></div>
+      <div style="padding:1rem 1.2rem;">
+        <div class="action-stack">
+
+          <!-- WhatsApp -->
+          <a href="https://wa.me/{{ enquiry.phone|cut:' '|cut:'+' }}?text=Hi%20{{ enquiry.name|urlencode }}%2C%20thank%20you%20for%20your%20enquiry{% if enquiry.property %}%20about%20{{ enquiry.property.title|urlencode }}{% endif %}%20on%20GoaNest!%20"
+             target="_blank" class="action-btn-full btn-whatsapp">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+            </svg>
+            Reply on WhatsApp
+          </a>
+
+          <!-- Call -->
+          <a href="tel:{{ enquiry.phone }}" class="action-btn-full btn-call">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.5 10.5a19.79 19.79 0 01-3.07-8.67A2 2 0 012.41 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.72 6.72l.77-.77a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
+            </svg>
+            Call {{ enquiry.phone }}
+          </a>
+
+          <!-- Email (only if email provided) -->
+          {% if enquiry.email %}
+          <a href="mailto:{{ enquiry.email }}?subject=Re: Your Enquiry{% if enquiry.property %} — {{ enquiry.property.title }}{% endif %}&body=Hi {{ enquiry.name }},%0A%0AThank you for your enquiry{% if enquiry.property %} about {{ enquiry.property.title }}{% endif %}.%0A%0A"
+             class="action-btn-full btn-email">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+            Send Email
+          </a>
+          {% endif %}
+
+          <div style="height:1px;background:var(--border);margin:.2rem 0;"></div>
+
+          <!-- Mark read / unread -->
+          {% comment %} {% if not enquiry.is_read %}
+          <a href=""
+             class="action-btn-full btn-email">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Mark as Read
+          </a>
+          {% else %}
+          <a href=""
+             class="action-btn-full btn-email">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            Mark as Unread
+          </a>
+          {% endif %} {% endcomment %}
+
+          <!-- Delete -->
+          <a href="{% url 'enquiry_delete' enquiry.pk %}"
+             onclick="return confirm('Delete this enquiry permanently? This cannot be undone.')"
+             class="action-btn-full btn-delete">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+              <path d="M10 11v6M14 11v6"/>
+            </svg>
+            Delete Enquiry
+          </a>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ENQUIRY META -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">Enquiry <em>Info</em></div></div>
+      <div style="padding:.4rem 0;">
+        <table class="info-table">
+          <tr>
+            <td>Enquiry ID</td>
+            <td><code style="background:#f0ece4;padding:.1rem .4rem;border-radius:3px;font-size:.8rem;">#{{ enquiry.id }}</code></td>
+          </tr>
+          <tr>
+            <td>Received</td>
+            <td style="font-size:.8rem;">{{ enquiry.created_at|date:"d M Y" }}<br/>
+              <span style="color:var(--ink-muted);">{{ enquiry.created_at|date:"H:i" }} IST</span>
+            </td>
+          </tr>
+          {% comment %} <tr>
+            <td>Status</td>
+            <td>
+              {% if enquiry.is_read %}
+                <span class="pill pill-muted">Read</span>
+              {% else %}
+                <span class="pill pill-warning">New</span>
+              {% endif %}
+            </td>
+          </tr> {% endcomment %}
+          {% if enquiry.property %}
+          <tr>
+            <td>Property</td>
+            <td style="font-size:.8rem;">
+              {{ enquiry.property.title }}<br/>
+              <span style="color:var(--ink-muted);">{{ enquiry.property.get_status_display }}</span>
+            </td>
+          </tr>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /sidebar -->
+
+</div><!-- /detail-grid -->
+{% endblock %}

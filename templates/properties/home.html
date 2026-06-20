@@ -1,0 +1,613 @@
+{% extends 'base/base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}GoaNest — Luxury Real Estate in Goa{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/home.css' %}">
+{% endblock %}
+
+{% block header %}
+    {% include 'base/header.html' %}
+{% endblock %}
+
+{% block content %}
+
+<!-- ── HERO ── -->
+<section class="hero" id="home">
+  <div class="hero-bg"></div>
+  <div class="hero-pattern"></div>
+  <div class="hero-image-side">
+    <img src="https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=900&q=80" alt="Goa villa"/>
+    <div class="hero-image-overlay"></div>
+  </div>
+  <div class="hero-content">
+    <div class="hero-eyebrow" id="hero-eyebrow">Goa's Most Trusted Agency</div>
+    <h1 class="hero-title" id="hero-title">
+      Find Your<br/>
+      <em>Dream Home</em><br/>
+      in <span class="accent">Goa</span>
+    </h1>
+    <p class="hero-sub" id="hero-sub">
+      Verified listings across North & South Goa. Portuguese villas, sea-view apartments, plantation retreats — viewed live on video call from anywhere in the world.
+    </p>
+    <div class="hero-actions" id="hero-actions">
+      <a href="#listings" class="btn-primary">Browse Properties</a>
+      <a href="#video-viewing" class="btn-outline">Book Video Tour</a>
+    </div>
+  </div>
+  <div class="hero-stats">
+    <div class="hero-stat"><span class="hero-stat-num" data-count="120">0</span><span class="hero-stat-label">Verified Listings</span></div>
+    <div class="hero-stat"><span class="hero-stat-num" data-count="85">0</span><span class="hero-stat-label">Happy Buyers</span></div>
+    <div class="hero-stat"><span class="hero-stat-num" data-count="12">0</span><span class="hero-stat-label">Years in Goa</span></div>
+    <div class="hero-stat"><span class="hero-stat-num" data-count="100">0</span><span class="hero-stat-label">% RERA Compliant</span></div>
+  </div>
+</section>
+
+<!-- ── SEARCH ── -->
+<div class="search-section">
+  <div class="search-bar">
+    <input class="search-field" type="text" placeholder="Search by area, property type or keyword…" id="searchInput"/>
+    <select class="search-select" id="regionFilter">
+      <option value="">All of Goa</option>
+      {% for value,label in region_choices %}
+        <option value="{{value}}">{{label}}</option>
+      {% endfor %}
+    </select>
+    <select class="search-select" id="typeFilter">
+      <option value="">Property Type</option>
+      {% for value,label in property_type_choices %}
+        <option value="{{value}}">{{label}}</option>
+      {% endfor %}
+    </select>
+    <select class="search-select" id="constructionFilter">
+      <option value="">Construction Status</option>
+      {% for value,label in construction_choices %}
+      <option value="{{value}}">{{label}}</option>
+      {% endfor %}
+    </select>
+    <button class="search-btn" onclick="filterListings()">Search</button>
+  </div>
+</div>
+
+<!-- ── LISTINGS ── -->
+<section id="listings">
+  <div class="listings-header">
+    <div>
+      <div class="section-eyebrow">Hand-picked Properties</div>
+      <h2 class="section-title">Featured <em>Listings</em></h2>
+    </div>
+    <div class="filter-tabs">
+      <button class="filter-tab active" data-filter="all">All</button>
+      {% for value,label in property_type_choices %}
+        <button class="filter-tab" data-filter="{{value}}">{{label}}</button>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="listings-grid" id="listingsGrid">
+    {% for property in properties %}
+    <!-- Card 1 -->
+    <div class="property-card" data-type="{{property.property_type}}" data-region="{{property.region}}" data-construction="{{property.construction_status}}" data-aos="fade-up" data-aos-delay="0">
+      <div class="card-image">
+        <img src="{{property.featured_image.url}}" alt="{{property.title}}"/>
+        {% if property.featured %}<div class="card-badge featured">Featured</div>{% endif %}
+        {% if property.verified %}<div class="card-verified">Verified</div>{% endif %}
+        <button class="card-video-btn" onclick="openModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Video Tour
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="card-location">{{property.get_property_type_display}} · {{property.region}}</div>
+        <div class="card-title"><a href="{% url 'property_detail' property.slug %}">{{ property.title }}</a></div>
+        <div class="card-tags">
+          {% for amenity in property.amenities.all|slice:":3" %}
+            <span class=" tag {% cycle '' 'beach' 'monsoon' %}">{{amenity.icon}} {{amenity.name}}</span>
+          {% endfor %}
+        </div>
+        <div class="card-specs">
+          <div class="card-spec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>{{property.bedrooms}} BHK</div>
+          <div class="card-spec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10H3M7 21V3M17 21V3"/></svg>{{property.area_sqft}} sqm</div>
+          <div class="card-spec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>{{property.get_construction_status_display}}</div>
+        </div>
+        <div class="card-footer">
+          <div class="card-price">₹{{property.price|indian_currency}}<span>{{property.price_label}}</span></div>
+          <button class="card-enquire" onclick="openModal()">Enquire</button>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+        <p>No Properties Found</p>
+    {% endfor %}
+  </div><!-- /listings-grid -->
+</section>
+
+<!-- ── TRUST BAR ── -->
+<div class="trust-bar" data-aos="fade-up">
+  <div class="trust-inner">
+    <div class="trust-item">
+      <div class="trust-icon">🏛️</div>
+      <div class="trust-label"><strong>RERA Registered</strong>All listings RERA verified</div>
+    </div>
+    <div class="trust-item">
+      <div class="trust-icon">✅</div>
+      <div class="trust-label"><strong>Site-Visited</strong>Every property personally inspected</div>
+    </div>
+    <div class="trust-item">
+      <div class="trust-icon">📹</div>
+      <div class="trust-label"><strong>Video Viewings</strong>Live video call property tours</div>
+    </div>
+    <div class="trust-item">
+      <div class="trust-icon">⚖️</div>
+      <div class="trust-label"><strong>Legal Assistance</strong>End-to-end legal support</div>
+    </div>
+    <div class="trust-item">
+      <div class="trust-icon">🌊</div>
+      <div class="trust-label"><strong>Goa Specialists</strong>12 years local expertise</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── GOA NATIVE SECTION ── -->
+<section id="goa-guide">
+  <div class="guide-grid">
+    <div class="guide-text" data-aos="fade-right">
+      <div class="section-eyebrow">Know Before You Buy</div>
+      <h2 class="section-title">We Know <em>Every Corner</em> of Goa</h2>
+      <p class="section-sub" style="color:rgba(245,237,211,.65)">
+        Goa isn't one place — it's dozens of micro-markets. From the party-beach energy of Calangute to the serene paddy fields of Sattari, we guide you to the right Taluka for your lifestyle and budget.
+      </p>
+      <div class="guide-features">
+        <div class="guide-feature" data-aos="fade-up" data-aos-delay="100">
+          <div class="guide-feature-icon">🗺️</div>
+          <div class="guide-feature-title">Taluka-level expertise</div>
+          <div class="guide-feature-desc">We know every Taluka, village panchayat zone, and CRZ regulation.</div>
+        </div>
+        <div class="guide-feature" data-aos="fade-up" data-aos-delay="150">
+          <div class="guide-feature-icon">🌊</div>
+          <div class="guide-feature-title">Beach distance maps</div>
+          <div class="guide-feature-desc">Exact distance to nearest beach for every listing.</div>
+        </div>
+        <div class="guide-feature" data-aos="fade-up" data-aos-delay="200">
+          <div class="guide-feature-icon">🌧️</div>
+          <div class="guide-feature-title">Monsoon accessibility</div>
+          <div class="guide-feature-desc">Honest flooding and access data. No surprises in June.</div>
+        </div>
+        <div class="guide-feature" data-aos="fade-up" data-aos-delay="250">
+          <div class="guide-feature-icon">💰</div>
+          <div class="guide-feature-title">Rental yield data</div>
+          <div class="guide-feature-desc">Tourist season rental income estimates per area.</div>
+        </div>
+      </div>
+    </div>
+    <div data-aos="fade-left" data-aos-delay="100">
+      <div class="region-map">
+        <div class="region-title">Listings by Region</div>
+        <div class="region-item">
+          <span class="region-name">North Goa (Bardez, Pernem)</span>
+          <div style="display:flex;align-items:center;gap:.8rem;">
+            <div class="region-bar-wrap"><div class="region-bar" style="width:85%"></div></div>
+            <span class="region-count">48</span>
+          </div>
+        </div>
+        <div class="region-item">
+          <span class="region-name">South Goa (Salcete, Canacona)</span>
+          <div style="display:flex;align-items:center;gap:.8rem;">
+            <div class="region-bar-wrap"><div class="region-bar" style="width:60%"></div></div>
+            <span class="region-count">34</span>
+          </div>
+        </div>
+        <div class="region-item">
+          <span class="region-name">Central (Tiswadi, Ponda)</span>
+          <div style="display:flex;align-items:center;gap:.8rem;">
+            <div class="region-bar-wrap"><div class="region-bar" style="width:40%"></div></div>
+            <span class="region-count">22</span>
+          </div>
+        </div>
+        <div class="region-item">
+          <span class="region-name">East Goa (Sanguem, Sattari)</span>
+          <div style="display:flex;align-items:center;gap:.8rem;">
+            <div class="region-bar-wrap"><div class="region-bar" style="width:28%"></div></div>
+            <span class="region-count">16</span>
+          </div>
+        </div>
+        <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid rgba(245,237,211,.1);">
+          <p style="font-size:.78rem;color:rgba(245,237,211,.45);line-height:1.6;">
+            OCI / Foreign buyers welcome. We handle all documentation including FEMA compliance and RBI permissions. <span style="color:var(--gold)">Ask us about buying as a foreigner →</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── VIDEO CALL SECTION ── -->
+<section id="video-viewing">
+  <div class="video-inner">
+    <div class="section-eyebrow" style="justify-content:center" data-aos="fade-up">No Travel Required</div>
+    <h2 class="section-title" data-aos="fade-up" data-aos-delay="50">View Any Property<br/><em>Live on Video Call</em></h2>
+    <p class="section-sub" style="margin:0 auto 1rem;text-align:center;max-width:520px;" data-aos="fade-up" data-aos-delay="100">
+      Based in Mumbai, Bangalore, or abroad? We walk you through the property live — every room, view, and neighbourhood detail — on a 30-minute video call.
+    </p>
+    <div class="steps-grid">
+      <div class="step" data-aos="fade-up" data-aos-delay="0">
+        <div class="step-num">01</div>
+        <div class="step-title">Pick a listing</div>
+        <div class="step-desc">Browse verified listings, shortlist your favourites, and hit "Book Video Tour" on any property page.</div>
+      </div>
+      <div class="step" data-aos="fade-up" data-aos-delay="100">
+        <div class="step-num">02</div>
+        <div class="step-title">Choose your slot</div>
+        <div class="step-desc">Select a time that works for you using our live availability calendar. Morning or evening — your choice.</div>
+      </div>
+      <div class="step" data-aos="fade-up" data-aos-delay="200">
+        <div class="step-num">03</div>
+        <div class="step-title">Join the call</div>
+        <div class="step-desc">Get a WhatsApp link. We meet you at the property and walk you through it live on video. No app download needed.</div>
+      </div>
+    </div>
+    <div class="calendly-placeholder" data-aos="fade-up">
+      <span class="calendly-badge">Booking Calendar</span>
+      <!-- <p>Live availability calendar loads here<br/>(embed your Calendly link: calendly.com/yourname)</p>
+      <a href="https://calendly.com/evolvemediatec" class="btn-primary">Book a Video Viewing Now</a> -->
+      <!-- Calendly link widget begin -->
+      <link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
+      <script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
+      <a href="" onclick="Calendly.initPopupWidget({url: 'https://calendly.com/evolvemediatec'});return false;" class="btn-primary">Schedule time with me</a>
+      <!-- Calendly link widget end -->
+    </div>
+  </div>
+</section>
+
+<!-- ── LEGAL SECTION ── -->
+<section id="legal">
+  <div class="legal-grid">
+    <div data-aos="fade-right">
+      <div class="section-eyebrow">Know Your Rights</div>
+      <h2 class="section-title">Legal Help<br/><em>Every Step</em></h2>
+      <p class="section-sub">
+        Buying property in Goa has unique legal considerations — CRZ zones, heritage restrictions, OCI buyer rules. We guide you through every document.
+      </p>
+      <div class="legal-cta-box" style="margin-top:2rem;">
+        <div class="legal-cta-text">
+          <strong>Free legal consultation</strong>
+          Talk to our empanelled Goa property lawyer
+        </div>
+        <button class="btn-primary" onclick="openModal()">Book Free Call</button>
+      </div>
+    </div>
+    <div>
+      <div class="legal-cards">
+        <div class="legal-card" data-aos="fade-up" data-aos-delay="0">
+          <div class="legal-card-icon">📋</div>
+          <div class="legal-card-title">Document Checklist</div>
+          <div class="legal-card-desc">7/12 extract, title deed, mutation register, EC, NOC — we explain every document in plain English.</div>
+        </div>
+        <div class="legal-card highlight" data-aos="fade-up" data-aos-delay="80">
+          <div class="legal-card-icon">🌍</div>
+          <div class="legal-card-title">OCI / Foreign Buyers</div>
+          <div class="legal-card-desc">FEMA compliance, RBI permissions, and approved property categories for NRI and OCI buyers.</div>
+        </div>
+        <div class="legal-card" data-aos="fade-up" data-aos-delay="160">
+          <div class="legal-card-icon">🏛️</div>
+          <div class="legal-card-title">RERA Verification</div>
+          <div class="legal-card-desc">Every listing comes with RERA registration number, verified against Goa RERA portal.</div>
+        </div>
+        <div class="legal-card" data-aos="fade-up" data-aos-delay="240">
+          <div class="legal-card-icon">🌊</div>
+          <div class="legal-card-title">CRZ & Zone Rules</div>
+          <div class="legal-card-desc">Coastal Regulation Zone rules explained. Know what you can build before you buy beachside land.</div>
+        </div>
+        <div class="legal-card" data-aos="fade-up" data-aos-delay="320">
+          <div class="legal-card-icon">🤝</div>
+          <div class="legal-card-title">Lawyer Network</div>
+          <div class="legal-card-desc">Connect with our panel of trusted Goa property lawyers — vetted, affordable, English-speaking.</div>
+        </div>
+        <div class="legal-card" data-aos="fade-up" data-aos-delay="400">
+          <div class="legal-card-icon">📝</div>
+          <div class="legal-card-title">SPA & Registration</div>
+          <div class="legal-card-desc">Sale Purchase Agreement drafting, stamp duty calculation, and sub-registrar office support.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── TESTIMONIALS ── -->
+<section id="testimonials">
+  <div class="section-eyebrow" data-aos="fade-up">What Buyers Say</div>
+  <h2 class="section-title" data-aos="fade-up" data-aos-delay="50">Trusted by <em>Happy Buyers</em></h2>
+  <div class="testimonials-grid">
+    <div class="testimonial" data-aos="fade-up" data-aos-delay="0">
+      <div class="stars">★★★★★</div>
+      <div class="testimonial-quote">We were based in Dubai and bought our Anjuna villa entirely on video calls. The team walked us through every inch — we felt we were there. Closed in 6 weeks.</div>
+      <div class="testimonial-author">
+        <div class="testimonial-avatar">RK</div>
+        <div><div class="testimonial-name">Rohit Kapoor</div><div class="testimonial-sub">Dubai → Anjuna Villa, 2024</div></div>
+      </div>
+    </div>
+    <div class="testimonial" data-aos="fade-up" data-aos-delay="100">
+      <div class="stars">★★★★★</div>
+      <div class="testimonial-quote">As an OCI card holder, I was worried about the paperwork. GoaNest handled every document, connected me with a brilliant lawyer, and the entire process was stress-free.</div>
+      <div class="testimonial-author">
+        <div class="testimonial-avatar">PM</div>
+        <div><div class="testimonial-name">Priya Mehta</div><div class="testimonial-sub">London → Palolem Plot, 2024</div></div>
+      </div>
+    </div>
+    <div class="testimonial" data-aos="fade-up" data-aos-delay="200">
+      <div class="stars">★★★★★</div>
+      <div class="testimonial-quote">The monsoon accessibility data they shared saved us from buying a property that floods. That kind of honesty is rare. We found our dream home in Morjim instead.</div>
+      <div class="testimonial-author">
+        <div class="testimonial-avatar">AS</div>
+        <div><div class="testimonial-name">Arjun Sharma</div><div class="testimonial-sub">Bangalore → Morjim Villa, 2023</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── ENQUIRY MODAL ── -->
+<form id="enquiryForm" method="POST">
+{% csrf_token %} 
+
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-title">Book a Viewing</div>
+    <div class="modal-sub">Whether you're buying, selling, or just have a question, we are here to help.</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Your Name</label>
+        <input type="text" placeholder="Sagar Patil" id="name" name="name" required/>
+      </div>
+      <div class="form-group">
+        <label>WhatsApp / Phone</label>
+        <input type="tel" placeholder="+91 78752 20046" id="phone" name="phone" required/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Email Address</label>
+      <input type="email" placeholder="your@email.com" id="email" name="email"/>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Interested In</label>
+        <select name="property_id" id="property_id">
+          <option disabled>Any Property</option>
+          {% for property in properties %}
+          <option value="{{ property.id }}">{{property.title}}, {{property.location}}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Viewing Type</label>
+        <select name="viewing_type" id="viewing_type">
+          <option value="Video Call">Video Call</option>
+          <option value="In-Person Visit">In-Person Visit</option>
+          <option value="Just Information">Just Information</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Message (optional)</label>
+      <textarea placeholder="Any specific requirements or questions about the property…" id="message" name="message"></textarea>
+    </div>
+    <button type="button" id="submitEnquiryBtn" class="btn-primary" style="width:100%;justify-content:center;" onclick="submitEnquiry()">Send Enquiry</button>
+    <p style="font-size:.72rem;color:#aaa;text-align:center;margin-top:.8rem;">Powered by Formspree · Your data is safe with us</p>
+  </div>
+</div>
+
+</form>
+
+  <!-- SCRIPTS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+<script>
+
+/* ── NAVBAR SCROLL ── */
+window.addEventListener('scroll',()=>{
+  document.getElementById('navbar').classList.toggle('scrolled', window.scrollY>60);
+});
+
+/* ── HERO GSAP ENTRANCE ── */
+gsap.from('#hero-eyebrow',  { opacity:0, y:30, duration:.9, delay:.3, ease:'power3.out' });
+gsap.from('#hero-title',    { opacity:0, y:50, duration:1,  delay:.5, ease:'power3.out' });
+gsap.from('#hero-sub',      { opacity:0, y:30, duration:.9, delay:.75, ease:'power3.out' });
+gsap.from('#hero-actions',  { opacity:0, y:20, duration:.8, delay:.95, ease:'power3.out' });
+gsap.from('.hero-stat',     { opacity:0, y:20, duration:.7, stagger:.12, delay:1.1, ease:'power3.out' });
+
+/* ── COUNTER ANIMATION ── */
+function animateCounters(){
+  document.querySelectorAll('.hero-stat-num[data-count]').forEach(el=>{
+    const target = +el.dataset.count;
+    let current = 0;
+    const step = target / 60;
+    const timer = setInterval(()=>{
+      current = Math.min(current+step, target);
+      el.textContent = Math.round(current) + (target===100 ? '' : '+');
+      if(current>=target) clearInterval(timer);
+    },25);
+  });
+}
+setTimeout(animateCounters, 1200);
+
+/* ── FILTER TABS ── */
+document.querySelectorAll('.filter-tab').forEach(tab=>{
+  tab.addEventListener('click',function(){
+    document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));
+    this.classList.add('active');
+    const filter = this.dataset.filter;
+    document.querySelectorAll('.property-card').forEach(card=>{
+      const show = filter==='all' || card.dataset.type===filter;
+      card.style.display = show ? 'block' : 'none';
+    });
+  });
+});
+
+/* ── SEARCH FILTER ── */
+function filterListings(){
+  const query  = document.getElementById('searchInput').value.toLowerCase();
+  const region = document.getElementById('regionFilter').value;
+  const type   = document.getElementById('typeFilter').value;
+  const construction = document.getElementById('constructionFilter').value;
+
+  document.querySelectorAll('.property-card').forEach(card=>{
+    const text = card.textContent.toLowerCase();
+    const matchQ = !query  || text.includes(query);
+    const matchR = !region || card.dataset.region===region;
+    const matchT = !type   || card.dataset.type===type;
+    const matchC = !construction || card.dataset.construction === construction;
+
+    card.style.display = (matchQ && matchR && matchT && matchC) ? 'block' : 'none';
+  });
+  document.getElementById('listings').scrollIntoView({behavior:'smooth'});
+}
+document.getElementById('searchInput').addEventListener('keydown',e=>{ if(e.key==='Enter') filterListings(); });
+
+/* ── GSAP SCROLL: REGION BARS ── */
+ScrollTrigger.create({
+  trigger:'#goa-guide',
+  start:'top 70%',
+  once:true,
+  onEnter:()=>{
+    document.querySelectorAll('.region-bar').forEach((bar,i)=>{
+      const w = bar.style.width;
+      bar.style.width='0';
+      setTimeout(()=>{ bar.style.transition='width 1s ease'; bar.style.width=w; }, i*120);
+    });
+  }
+});
+
+/* ── GSAP SCROLL: PROPERTY CARDS PARALLAX ── */
+gsap.utils.toArray('.property-card').forEach(card=>{
+  gsap.fromTo(card.querySelector('.card-image img'),
+    { scale:1.08 },
+    { scale:1, scrollTrigger:{ trigger:card, start:'top bottom', end:'bottom top', scrub:1 } }
+  );
+});
+
+/* ── MODAL ── */
+function openModal(){
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+function closeModalOutside(e){
+  if(e.target===document.getElementById('modalOverlay')) closeModal();
+}
+function submitEnquiry(){
+
+    const btn = document.getElementById('submitEnquiryBtn');
+
+    btn.disabled = true;
+    btn.innerText = 'Sending...';
+
+    const formData = new FormData();
+
+    formData.append(
+        'name',
+        document.getElementById('name').value
+    );
+
+    formData.append(
+        'phone',
+        document.getElementById('phone').value
+    );
+
+    formData.append(
+        'email',
+        document.getElementById('email').value
+    );
+
+    formData.append(
+        'property_id',
+        document.getElementById('property_id').value
+    );
+
+    formData.append(
+        'viewing_type',
+        document.getElementById('viewing_type').value
+    );
+
+    formData.append(
+        'message',
+        document.getElementById('message').value
+    );
+
+    fetch('/submit-enquiry/', {
+
+        method: 'POST',
+
+        headers: {
+            'X-CSRFToken':
+            document.querySelector(
+                '[name=csrfmiddlewaretoken]'
+            ).value
+        },
+
+        body: formData
+
+    })
+
+    .then(response => response.json())
+
+    .then(data => {
+
+        if(data.success){
+
+          btn.innerText = 'Sent ✓';
+
+          document.getElementById('enquiryForm').reset();
+
+          closeModal();
+
+          alert('Thank you! Our team will contact you shortly.');
+
+        }else{
+
+            btn.disabled = false;
+            btn.innerHTML = 'Send Enquiry';
+
+        }
+
+    })
+    
+    .catch(error => {
+
+        btn.disabled = false;
+        btn.innerHTML = 'Send Enquiry';
+
+        console.error(error);
+
+    });
+    console.log("Button clicked");
+
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+
+/* ── MOBILE MENU ── */
+function toggleMenu(){
+  const links = document.querySelector('.nav-links');
+  links.style.display = links.style.display==='flex' ? 'none' : 'flex';
+  links.style.flexDirection='column';
+  links.style.position='absolute';
+  links.style.top='72px';
+  links.style.left='0'; links.style.right='0';
+  links.style.background='var(--cream)';
+  links.style.padding='1.5rem 5%';
+  links.style.borderBottom='1px solid rgba(13,110,110,.1)';
+  links.style.boxShadow='0 8px 24px rgba(0,0,0,.08)';
+}
+</script>
+
+{% endblock %}
+
+{% block footer %}
+    {% include 'base/footer.html' %}
+{% endblock %}
